@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpellBattle | Play</title>
+
+  <!-- Tailwind (browser build) + DaisyUI -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <style>
+    /* small helper to hide/show the error */
+    #key-error { display: none; color: red; font-weight: bold; text-align: center; margin-top: 0.5rem; }
+  </style>
+</head>
+
+<body class="bg-base-200 min-h-screen">
+
+  <!-- ============ DRAWER (left menu) ============ -->
+  <div class="drawer">
+    <input id="menu-drawer" type="checkbox" class="drawer-toggle" />
+
+    <div class="drawer-content flex flex-col min-h-screen">
+
+      <!-- ============ TOP BAR ============ -->
+      <header class="navbar bg-base-100 border-b border-base-300 px-4">
+        <div class="navbar-start">
+          <label for="menu-drawer" class="btn btn-square btn-ghost" aria-label="Open menu" title="Menu (press M)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </label>
+        </div>
+
+        <div class="navbar-center">
+          <a href="../index.html" class="text-xl font-extrabold tracking-wide">Spell<span class="text-warning">Battle</span></a>
+        </div>
+
+        <div class="navbar-end gap-2">
+          <!-- theme toggle -->
+          <label class="swap swap-rotate btn btn-ghost btn-circle" title="Toggle theme">
+            <input id="theme-toggle" type="checkbox" />
+            <svg class="swap-off h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M5.64 17l-.71.71a1 1 0 000 1.41 1 1 0 001.41 0l.71-.71A1 1 0 005.64 17zM5 12a1 1 0 00-1-1H3a1 1 0 000 2h1a1 1 0 001-1zm7-7a1 1 0 001-1V3a1 1 0 00-2 0v1a1 1 0 001 1zM5.64 7.05a1 1 0 00.7.29 1 1 0 00.71-.29 1 1 0 000-1.41l-.71-.71a1 1 0 00-1.41 1.41zm12 .29a1 1 0 00.7-.29l.71-.71a1 1 0 10-1.41-1.41l-.71.71a1 1 0 000 1.41 1 1 0 00.71.29zM21 11h-1a1 1 0 000 2h1a1 1 0 000-2zm-9 8a1 1 0 00-1 1v1a1 1 0 002 0v-1a1 1 0 00-1-1zm6.36-2A1 1 0 0017 18.36l.71.71a1 1 0 001.41 0 1 1 0 000-1.41zM12 6.5A5.5 5.5 0 1017.5 12 5.51 5.51 0 0012 6.5zm0 9A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z"/></svg>
+            <svg class="swap-on h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M21.64 13a1 1 0 00-1.05-.14 8.05 8.05 0 01-3.37.73 8.15 8.15 0 01-8.14-8.1 8.59 8.59 0 01.25-2A1 1 0 008 2.36a10.14 10.14 0 1014 11.69 1 1 0 00-.36-1.05zm-9.5 6.69A8.14 8.14 0 017.08 5.22v.27A10.15 10.15 0 0017.22 15.63a9.79 9.79 0 002.1-.22 8.11 8.11 0 01-7.18 4.32z"/></svg>
+          </label>
+
+          <!-- profile -->
+          <a href="../profile.html" class="tooltip tooltip-bottom" data-tip="Your profile" aria-label="Profile">
+            <div class="avatar avatar-placeholder transition-transform hover:scale-110">
+              <div class="bg-warning text-warning-content w-11 rounded-full ring-2 ring-base-content/80 ring-offset-2 ring-offset-base-100">
+                <span class="text-sm font-bold" id="avatar-initials">P1</span>
+              </div>
+            </div>
+          </a>
+        </div>
+      </header>
+
+      <!-- ============ MAIN ============ -->
+      <main class="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-10">
+
+        <!-- ============ SECTION: PLAY WITH FRIEND ============ -->
+        <section class="card bg-white bg-opacity-10 rounded-box w-full max-w-md p-6 fade-in" style="background-image: url('https://picsum.photos/seed/friend/800/600'); background-size: cover;">
+          <h2 class="text-2xl font-extrabold mb-2 text-center">Play with a Friend</h2>
+          <p class="text-base text-center opacity-80">Challenge a buddy to a quick match and see who scores higher.</p>
+          <a href="friend.html" class="mt-4 btn btn-warning w-full">Start Game</a>
+        </section>
+
+        <!-- ============ SECTION: PLAY IN TOURNAMENT ============ -->
+        <section class="card bg-white bg-opacity-10 rounded-box w-full max-w-md p-6 fade-in" style="background-image: url('https://picsum.photos/seed/tournament/800/600'); background-size: cover;">
+          <h2 class="text-2xl font-extrabold mb-2 text-center">Play in Tournament</h2>
+          <p class="text-base text-center opacity-80">Enter a tournament, compete against others, and climb the leaderboard.</p>
+          <a href="tournament.html" class="mt-4 btn btn-warning w-full">Join Tournament</a>
+        </section>
+
+        <!-- ============ SECTION: PRACTICE MYSELF ============ -->
+        <section class="card bg-white bg-opacity-10 rounded-box w-full max-w-md p-6 fade-in" style="background-image: url('https://picsum.photos/seed/practice/800/600'); background-size: cover;">
+          <h2 class="text-2xl font-extrabold mb-2 text-center">Practice Myself</h2>
+          <p class="text-base text-center opacity-80">Sharpen your skills solo with timed challenges and personal records.</p>
+          <a href="practice.html" class="mt-4 btn btn-warning w-full">Start Practice</a>
+        </section>
+
+      </main>
+
+      <footer class="footer footer-center p-4 text-sm opacity-60">
+        <p>© <span id="year"></span> Game Name. Press <kbd class="kbd kbd-sm">M</kbd> to open the menu.</p>
+      </footer>
+    </div>
+
+    <!-- ============ SIDE MENU ============ -->
+    <div class="drawer-side z-50">
+      <label for="menu-drawer" aria-label="Close menu" class="drawer-overlay"></label>
+      <aside class="bg-base-100 min-h-full w-72 p-4 flex flex-col gap-2">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-lg font-extrabold">Menu</span>
+          <label for="menu-drawer" class="btn btn-sm btn-circle btn-ghost">✕</label>
+        </div>
+
+        <ul class="menu w-full gap-1 p-0" id="side-menu">
+          <li><a href="../index.html">🏠 Home</a></li>
+          <li><a href="play.html">🎮 Play</a></li>
+          <li><a href="tournament.html">📊 Tournaments</a></li>
+          <li><a href="practice.html">👥 Practice</a></li>
+        </ul>
+
+        <div class="mt-auto">
+          <a href="../profile.html" class="btn btn-warning w-full">How to play</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- toast area -->
+  <div class="toast toast-end z-[60]" id="toasts"></div>
+  <script src="../static/js/index.js"></script>
+
+  <script>
+    // Dump data: valid tournament key
+    const VALID_KEY = "ABC123";
+
+    function checkKey(event) {
+      event.preventDefault();
+      const input = document.getElementById("tournament-key");
+      const error = document.getElementById("key-error");
+
+      if (input.value.trim() === VALID_KEY) {
+        error.style.display = "none";
+        // Dump success action (replace with real navigation/logic)
+        alert("Key accepted! Joining tournament...");
+        // window.location.href = "play.html?key=" + encodeURIComponent(input.value);
+      } else {
+        error.style.display = "block";
+        input.focus();
+      }
+      return false;
+    }
+
+    // set current year in footer
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+
+</body>
+</html>

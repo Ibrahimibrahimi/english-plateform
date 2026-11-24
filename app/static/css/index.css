@@ -1,0 +1,16 @@
+    /* Dashed "stage" frame, like the wireframe */
+    .stage {
+      border: 2px dashed color-mix(in oklab, var(--color-base-content) 55%, transparent);
+    }
+    .score-pop { animation: pop .35s ease; }
+    @keyframes pop {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.25); }
+      100% { transform: scale(1); }
+    }
+    .fade-in { animation: fade .5s ease both; }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
