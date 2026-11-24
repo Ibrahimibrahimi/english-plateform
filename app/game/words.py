@@ -1,10 +1,10 @@
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 from app import config
 
 
-@lru_cache(maxsize=None)
+@cache
 def load_words(path: str | None = None) -> frozenset[str]:
     source = Path(path) if path else config.WORDS_FILE
     return frozenset(

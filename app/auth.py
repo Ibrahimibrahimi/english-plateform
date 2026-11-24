@@ -89,7 +89,9 @@ def public_user(user: User) -> dict:
         "username": user.username,
         "email": user.email,
         "role": user.role,
-        "points_total": user.points_total,
+        "status": user.status,
+        "lifetime_learning_points": user.lifetime_learning_points,
         "wins": user.wins,
         "losses": user.losses,
+        "tournaments_played": user.tournaments_played,
     }

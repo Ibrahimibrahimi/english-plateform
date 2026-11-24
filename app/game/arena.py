@@ -2,18 +2,38 @@ import asyncio
 import math
 import time
 
-from app.game.rules import heal as heal_player
-from app.game.rules import score_word, sync_player, use_special
+from app import config
+from app.game.rules import (
+    activate_skill,
+    apply_damage,
+    is_blocked,
+    regenerate_armor,
+    regenerate_health,
+    regenerate_skill,
+    score_word,
+    sync_player,
+)
 from app.game.words import is_valid_word
 
 
 class LiveMatch:
-    def __init__(self, match_id: int, players: dict[int, dict], rounds: list[dict], on_finish=None):
+    def __init__(
+        self,
+        match_id: int,
+        players: dict[int, dict],
+        rounds: list[dict],
+        skill_pool: list[str],
+        on_finish=None,
+        on_event=None,
+    ):
         self.match_id = match_id
         self.players = players
         self.rounds = rounds
+        self.skill_pool = skill_pool
         self.on_finish = on_finish
+        self.on_event = on_event
         self.connections: dict[int, object] = {}
+        self.disconnect_tasks: dict[int, asyncio.Task] = {}
         self.status = "active" if len(players) == 2 else "waiting"
         self.round_index = -1
         self.round_deadline = 0.0
@@ -23,27 +43,38 @@ class LiveMatch:
         self._timer: asyncio.Task | None = None
 
     def public_state(self) -> dict:
+        now = time.monotonic()
+        players = {}
+        for uid, state in self.players.items():
+            players[str(uid)] = {
+                **{key: value for key, value in state.items() if key not in {"blocked_until", "health_ready_at", "armor_ready_at", "skill_ready_at"}},
+                "skill_label": config.SKILLS.get(state["skill"]),
+                "blocked": is_blocked(state, now),
+                "health_ready_in": max(0, math.ceil(state["health_ready_at"] - now)),
+                "armor_ready_in": max(0, math.ceil(state["armor_ready_at"] - now)),
+            }
         return {
             "match_id": self.match_id,
             "status": self.status,
             "round_index": self.round_index,
             "total_rounds": len(self.rounds),
-            "seconds_left": max(0, math.ceil(self.round_deadline - time.monotonic())),
+            "seconds_left": max(0, math.ceil(self.round_deadline - now)),
             "letters": self.rounds[self.round_index]["letters"] if self.round_index >= 0 else "",
             "winner_id": self.winner_id,
-            "players": {str(uid): dict(state) for uid, state in self.players.items()},
+            "players": players,
         }
 
     def opponent_id(self, user_id: int) -> int | None:
-        for uid in self.players:
-            if uid != user_id:
-                return uid
-        return None
+        return next((uid for uid in self.players if uid != user_id), None)
 
     async def connect(self, user_id: int, websocket: object) -> bool:
         if user_id not in self.players:
             await websocket.send_json({"type": "error", "message": "You are not in this match"})
             return False
+        task = self.disconnect_tasks.pop(user_id, None)
+        if task is not None:
+            task.cancel()
+        self.players[user_id]["connected"] = True
         self.connections[user_id] = websocket
         await websocket.send_json({"type": "state", "payload": self.public_state()})
         if len(self.connections) == len(self.players) and self.status == "waiting":
@@ -52,9 +83,18 @@ class LiveMatch:
 
     def disconnect(self, user_id: int) -> None:
         self.connections.pop(user_id, None)
-        if self.status == "active" and len(self.connections) == 1:
-            remaining = next(iter(self.connections))
-            asyncio.create_task(self.finish("disconnect", winner_id=remaining))
+        if user_id not in self.players or self.status != "active":
+            return
+        self.players[user_id]["connected"] = False
+        self.emit_event("player.disconnected", user_id, {})
+        task = asyncio.create_task(self._forfeit_after_grace(user_id))
+        self.disconnect_tasks[user_id] = task
+
+    async def _forfeit_after_grace(self, user_id: int) -> None:
+        await asyncio.sleep(config.RECONNECT_GRACE_SECONDS)
+        if self.status == "active" and not self.players[user_id]["connected"]:
+            winner = self.opponent_id(user_id)
+            await self.finish("disconnect", winner_id=winner)
 
     async def broadcast(self, message: dict) -> None:
         dead = []
@@ -66,8 +106,16 @@ class LiveMatch:
         for uid in dead:
             self.connections.pop(uid, None)
 
+    def emit_event(self, event: str, user_id: int, data: dict) -> None:
+        if self.on_event is not None:
+            self.on_event(self.match_id, event, user_id, data)
+        asyncio.create_task(
+            self.broadcast({"type": "event", "event": event, "user_id": user_id, "payload": data})
+        )
+
     async def start(self) -> None:
         self.status = "active"
+        self.emit_event("match.started", 0, {})
         self._timer = asyncio.create_task(self._timer_loop())
         await self.next_round()
 
@@ -90,19 +138,25 @@ class LiveMatch:
                 },
             }
         )
+        self.emit_event("question.issued", 0, {"index": self.round_index, "letters": current["letters"]})
         await self.broadcast_state()
 
     async def _timer_loop(self) -> None:
         while self.status == "active":
             await asyncio.sleep(1)
             if self.round_deadline and time.monotonic() >= self.round_deadline:
-                await self.broadcast({"type": "event", "message": "Time is up"})
+                await self.broadcast({"type": "event", "event": "round.ended", "payload": {}})
                 await self.next_round()
 
     async def broadcast_state(self) -> None:
         await self.broadcast({"type": "state", "payload": self.public_state()})
 
-    async def submit_word(self, user_id: int, word: str) -> None:
+    async def _error(self, user_id: int, message: str) -> None:
+        websocket = self.connections.get(user_id)
+        if websocket is not None:
+            await websocket.send_json({"type": "error", "message": message})
+
+    async def submit_word(self, user_id: int, word: str, command_id: str = "") -> None:
         if self.status != "active" or self.round_index < 0:
             await self._error(user_id, "The match is not active")
             return
@@ -118,24 +172,31 @@ class LiveMatch:
             await self._error(user_id, "Invalid word")
             return
 
-        gained = score_word(candidate)
-        actor = self.players[user_id]
-        actor["points"] += gained
-        sync_player(actor)
         self.submitted[user_id].add(candidate)
+        self.emit_event("answer.submitted", user_id, {"word": candidate, "command_id": command_id})
+        actor = self.players[user_id]
+
+        if is_blocked(actor):
+            detail = "Point generation is blocked"
+            gained = 0
+        else:
+            gained = score_word(candidate)
+            actor["points"] += gained
+            sync_player(actor, self.skill_pool)
+            self.emit_event("points.awarded", user_id, {"word": candidate, "points": gained})
+            detail = f"+{gained} points"
 
         opponent_id = self.opponent_id(user_id)
-        if opponent_id is not None:
+        knocked_out = False
+        if opponent_id is not None and gained:
             opponent = self.players[opponent_id]
-            opponent["armor"] = max(0, opponent["armor"] - actor["attack"])
-            knocked_out = opponent["armor"] == 0
-        else:
-            knocked_out = False
+            apply_damage(actor, opponent)
+            knocked_out = opponent["health"] == 0
 
         await self.broadcast(
             {
                 "type": "word",
-                "payload": {"user_id": user_id, "word": candidate, "points": gained},
+                "payload": {"user_id": user_id, "word": candidate, "points": gained, "message": detail},
             }
         )
         if knocked_out:
@@ -143,50 +204,61 @@ class LiveMatch:
             return
         await self.broadcast_state()
 
-    async def use_special(self, user_id: int, name: str) -> None:
+    async def regenerate(self, user_id: int, resource: str) -> None:
         if self.status != "active":
             await self._error(user_id, "The match is not active")
             return
-        actor = self.players[user_id]
-        opponent_id = self.opponent_id(user_id)
-        if opponent_id is None or name not in actor["specials"]:
-            await self._error(user_id, "That special is not available")
+        player = self.players[user_id]
+        actions = {
+            "health": (regenerate_health, "health.regenerated", (player,)),
+            "armor": (regenerate_armor, "armor.regenerated", (player,)),
+            "skill": (regenerate_skill, "skill.regenerated", (player, self.skill_pool)),
+        }
+        if resource not in actions:
+            await self._error(user_id, "Unknown resource")
             return
-        detail = use_special(name, actor, self.players[opponent_id])
-        await self.broadcast({"type": "event", "message": detail})
-        await self.broadcast_state()
-
-    async def heal(self, user_id: int) -> None:
-        if self.status != "active":
-            await self._error(user_id, "The match is not active")
-            return
+        func, event, args = actions[resource]
         try:
-            detail = heal_player(self.players[user_id])
+            detail = func(*args)
         except ValueError as exc:
             await self._error(user_id, str(exc))
             return
-        await self.broadcast({"type": "event", "message": detail})
+        self.emit_event(event, user_id, {"detail": detail})
+        await self.broadcast({"type": "event", "event": event, "user_id": user_id, "payload": {"message": detail}})
         await self.broadcast_state()
 
-    async def _error(self, user_id: int, message: str) -> None:
-        websocket = self.connections.get(user_id)
-        if websocket is not None:
-            await websocket.send_json({"type": "error", "message": message})
+    async def activate_skill(self, user_id: int) -> None:
+        if self.status != "active":
+            await self._error(user_id, "The match is not active")
+            return
+        opponent_id = self.opponent_id(user_id)
+        if opponent_id is None:
+            await self._error(user_id, "No opponent")
+            return
+        try:
+            detail = activate_skill(self.players[user_id], self.players[opponent_id], self.skill_pool)
+        except ValueError as exc:
+            await self._error(user_id, str(exc))
+            return
+        self.emit_event("skill.activated", user_id, {"detail": detail})
+        await self.broadcast(
+            {"type": "event", "event": "skill.activated", "user_id": user_id, "payload": {"message": detail}}
+        )
+        await self.broadcast_state()
 
     async def finish(self, reason: str, winner_id: int | None = None) -> None:
         if self.status == "finished":
             return
         if winner_id is None and reason == "rounds":
             ordered = sorted(self.players.items(), key=lambda item: item[1]["points"], reverse=True)
-            if len(ordered) == 2 and ordered[0][1]["points"] == ordered[1][1]["points"]:
-                if not self.sudden_death:
-                    self.sudden_death = True
-                    extra = dict(self.rounds[-1])
-                    extra["index"] = len(self.rounds)
-                    self.rounds.append(extra)
-                    await self.broadcast({"type": "event", "message": "Tie! Sudden death round"})
-                    await self.next_round()
-                    return
+            if len(ordered) == 2 and ordered[0][1]["points"] == ordered[1][1]["points"] and not self.sudden_death:
+                self.sudden_death = True
+                extra = dict(self.rounds[-1])
+                extra["index"] = len(self.rounds)
+                self.rounds.append(extra)
+                await self.broadcast({"type": "event", "event": "sudden.death", "payload": {}})
+                await self.next_round()
+                return
             if ordered:
                 winner_id = ordered[0][0]
 
@@ -194,6 +266,9 @@ class LiveMatch:
         self.winner_id = winner_id
         if self._timer is not None:
             self._timer.cancel()
+        for task in self.disconnect_tasks.values():
+            task.cancel()
+        self.emit_event("match.completed", winner_id or 0, {"reason": reason})
         await self.broadcast(
             {
                 "type": "match_end",
@@ -205,15 +280,15 @@ class LiveMatch:
             }
         )
         if self.on_finish is not None:
-            self.on_finish(self.match_id, winner_id, self.players, self.round_index + 1)
+            self.on_finish(self.match_id, reason, winner_id, self.players, self.round_index + 1)
 
 
 class Arena:
     def __init__(self):
         self.matches: dict[int, LiveMatch] = {}
 
-    def create(self, match_id: int, players: dict[int, dict], rounds: list[dict], on_finish=None) -> LiveMatch:
-        match = LiveMatch(match_id, players, rounds, on_finish)
+    def create(self, match_id, players, rounds, skill_pool, on_finish=None, on_event=None) -> LiveMatch:
+        match = LiveMatch(match_id, players, rounds, skill_pool, on_finish, on_event)
         self.matches[match_id] = match
         return match
 

@@ -21,27 +21,38 @@ MAX_LETTERS = 12
 ROUNDS_PER_MATCH = 5
 ROUND_SECONDS = 60
 
-ARMOR_BASE = 100
+HEALTH_BASE = 100
+HEALTH_PER_POINT = 3
+HEALTH_CAP = 300
+ARMOR_BASE = 60
 ARMOR_PER_POINT = 2
-ARMOR_CAP = 260
+ARMOR_CAP = 200
 ATTACK_BASE = 6
 ATTACK_PER_POINT = 1
 ATTACK_CAP = 30
 
-DRAIN_AMOUNT = 10
-HEAL_COST = 10
-HEAL_AMOUNT = 30
-HEAL_COOLDOWN = 15
+HEALTH_REGEN_PERCENT = 0.20
+ARMOR_REGEN_PERCENT = 0.15
+REGEN_HEALTH_COST = 10
+REGEN_ARMOR_COST = 10
+REGEN_COOLDOWN = 10
+SPECIAL_REGEN_COST = 15
+SPECIAL_REGEN_COOLDOWN = 10
 
-SPECIAL_THRESHOLDS = {
-    "drain": 15,
-    "swap_points": 30,
-    "swap_skill": 45,
-    "clear_skill": 60,
+BLOCK_SECONDS = 5
+REDUCE_POINTS_PERCENT = 0.20
+STEAL_MIN_POINTS = 12
+STEAL_MAX_POINTS = 30
+
+RECONNECT_GRACE_SECONDS = 30
+PRESENCE_TIMEOUT_SECONDS = 30
+CHALLENGE_TTL_HOURS = 24
+
+SKILLS = {
+    "BLOCK_POINTS": "Block point generation (5s)",
+    "REDUCE_POINTS_PERCENT": "Reduce opponent points by 20%",
+    "STEAL_POINTS_RANGE": "Take 12-30 points",
+    "SWAP_SKILLS": "Switch skills with opponent",
+    "CLEAR_OPPONENT_SKILL": "Clear opponent skill",
 }
-SPECIAL_LABELS = {
-    "drain": "Drain points",
-    "swap_points": "Swap points",
-    "swap_skill": "Swap skill",
-    "clear_skill": "Clear skill",
-}
+SKILL_CODES = list(SKILLS)
