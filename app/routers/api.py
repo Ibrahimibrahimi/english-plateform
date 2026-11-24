@@ -256,6 +256,12 @@ def tournament_details(tournament_id: int, db: Session = Depends(get_db)):
         .filter(TournamentParticipant.tournament_id == tournament_id)
         .all()
     )
+    matches = (
+        db.query(Match)
+        .filter(Match.tournament_id == tournament_id)
+        .order_by(Match.id)
+        .all()
+    )
     return {
         "id": tournament.id,
         "name": tournament.name,
@@ -269,6 +275,7 @@ def tournament_details(tournament_id: int, db: Session = Depends(get_db)):
         "participants": [
             {"id": user.id, "username": user.username, "status": status} for user, status in participants
         ],
+        "matches": [_match_info(match) for match in matches],
     }
 
 

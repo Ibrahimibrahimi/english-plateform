@@ -64,6 +64,9 @@ def test_accounts_challenges_tournaments_and_stats():
         assert first_join.status_code == 200, first_join.text
         assert second_join.status_code == 200, second_join.text
         assert second_join.json()["match"] is not None
+        details = player_one.get(f"/api/tournaments/{tournament_id}").json()
+        assert len(details["matches"]) == 1
+        assert details["matches"][0]["id"] == second_join.json()["match"]["id"]
 
         challenge = player_one.post(
             "/api/challenges", json={"allowed_letters": "AEIOURSTLND"}

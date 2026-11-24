@@ -28,6 +28,33 @@ async function loadTournaments(search = "") {
   }
 }
 
+async function watchTournament(id) {
+  let me;
+  try {
+    me = await request("/api/auth/me");
+  } catch (error) {
+    return;
+  }
+  let attempts = 0;
+  const timer = setInterval(async () => {
+    attempts += 1;
+    if (attempts > 60) {
+      clearInterval(timer);
+      return;
+    }
+    try {
+      const details = await request(`/api/tournaments/${id}`);
+      const participant = details.participants.find((item) => item.id === me.id);
+      if (participant?.status === "matched" && details.matches.length) {
+        clearInterval(timer);
+        location.href = `/playing/${details.matches[details.matches.length - 1].id}`;
+      }
+    } catch (error) {
+      clearInterval(timer);
+    }
+  }, 2000);
+}
+
 async function join(id, key) {
   try {
     const result = await request(`/api/tournaments/${id}/join`, {
@@ -39,6 +66,7 @@ async function join(id, key) {
       return;
     }
     toast("Joined. Waiting for an opponent.", "success");
+    watchTournament(id);
   } catch (error) {
     toast(error.message, "error");
   }
