@@ -1,0 +1,1357 @@
+# English Game — Software Architecture
+
+**Document type:** Product and technical architecture  
+**Status:** Initial architecture based on `englishgameplan.excalidraw`  
+**Scope:** Competitive English-learning game with 1-vs-1 matches, special moves, tournaments, challenges, player accounts, and progress statistics.
+
+---
+
+## 1. Purpose and product vision
+
+English Game is a multiplayer learning game in which two players compete in a 1-vs-1 match while completing English-language activities. Players earn points through learning tasks. The player with the higher score when the match ends wins.
+
+The product combines three systems:
+
+1. **Learning system:** presents English exercises and evaluates answers.
+2. **Competitive game system:** manages points, health, armor, special moves, and match outcomes.
+3. **Social competition system:** supports online players, challenges, tournaments, profiles, and statistics.
+
+The learning activity is the source of ordinary match points. Special moves modify the competitive situation; they should not replace the learning activity itself.
+
+### 1.1 Product goals
+
+- Make English practice feel like a short competitive game.
+- Let players challenge another online player or create a private 1-vs-1 challenge.
+- Let an administrator create and configure tournaments.
+- Give players clear feedback about points, health, armor, special moves, and match status.
+- Track player performance over time.
+- Keep match outcomes fair, auditable, and resistant to client-side manipulation.
+
+### 1.2 Non-goals for the first release
+
+Unless added to the product requirements later, the first release does not need:
+- Large team battles.
+- A complex animated combat system.
+- Voice/video chat.
+- A public user-generated exercise editor.
+- A fully automated tournament-bracket system.
+- Real-money purchases or betting.
+
+The sketch explicitly says that some animation can be implemented later. The first version should therefore prioritize correct match rules and clear state changes over elaborate animation.
+
+---
+
+## 2. Requirements extracted from the sketch
+
+This section records what the concept currently specifies. Items marked **Open decision** are not defined sufficiently in the sketch and must be agreed before implementation.
+
+### 2.1 Match format
+
+- A match is between exactly two players.
+- Both players accumulate points.
+- The player who gains more points wins.
+- The interface displays the player's points and the opponent's points.
+- The interface contains health and armor indicators.
+- The interface contains two tank/player areas and mentions animation as a later enhancement.
+
+**Open decisions**
+- Match duration or ending condition.
+- Whether the match ends when a timer expires, when a player reaches a target score, or when another condition occurs.
+- Whether health reaching zero ends the match.
+- Whether a tie is possible and, if so, how it is resolved.
+- Whether players take turns or answer simultaneously.
+- Whether points are awarded per correct answer, speed, difficulty, streak, or a combination.
+
+### 2.2 Health, armor, and regeneration
+
+The sketch defines these regeneration actions:
+
+| Action | Effect |
+|---|---:|
+| Regenerate health | Restore 20% |
+| Regenerate armor | Restore 15% |
+
+It also mentions quick-action shortcuts displayed on the buttons:
+
+| Shortcut | Intended use |
+|---|---|
+| `Ctrl + 0` | Quick regeneration action |
+| `Ctrl + 1` | Quick regeneration action |
+| `Ctrl + 2` | Quick regeneration action |
+
+**Open decision:** The sketch does not unambiguously map each shortcut to a particular action. Confirm the mapping before implementation. The UI must also show the shortcut beside the corresponding button.
+
+**Recommended rule:** Health and armor have defined maximum values. Regeneration restores a percentage of the maximum, not an unlimited amount. The resulting value is capped at the maximum. The exact starting values, maximum values, cooldowns, and resource costs remain configurable game rules.
+
+### 2.3 Special moves
+
+A player has a special move. The sketch says that the move is randomly selected when the player regenerates/refreshes the special move.
+
+The listed effects are:
+
+1. Block the opponent's point generation for 5 seconds.
+2. Reduce the opponent's points by 20%.
+3. Take 12–30 points from the opponent.
+4. Switch special moves with the opponent.
+5. Clear the opponent's special move.
+6. Additional moves may be added later.
+
+Important behavior:
+- The player should be able to see the currently available move.
+- The player activates the move during a match.
+- The move changes the opponent's state or the two players' available moves.
+- The move should be selected randomly when a player regenerates it, subject to the tournament's allowed skill list.
+
+**Open decisions**
+- Does a player start with a special move?
+- Is there a cooldown or a limited number of uses?
+- Does regeneration consume points, time, or another resource?
+- Can the same move be selected consecutively?
+- Is the 12–30 point transfer random, and is the amount shown before activation?
+- What happens if the opponent has fewer points than the transfer amount?
+- Can a player use a move while blocked or while another effect is active?
+- Does “clear opponent skill” remove the opponent's currently held move, active effect, or both?
+
+**Recommended interpretation:** A special move is a temporary ability card held by a player. Activating it consumes that card. Regeneration draws a new card randomly from the match's permitted move pool. The server determines the random result.
+
+### 2.4 Tournaments
+
+- Only an administrator can create tournaments.
+- An administrator configures:
+  - Maximum number of players.
+  - Allowed letters; default is `all`.
+  - List of available skills and their effects on opponents.
+- Players can view a list of online tournaments.
+- Players can search for a tournament.
+- Players can join using a tournament key.
+- A player cannot join when the tournament is full.
+- A tournament information view displays its configuration, including allowed letters and other settings.
+- A tournament is made up of 1-vs-1 challenges/matches; the winner of a match is the player who gains more points.
+
+**Open decisions**
+- Tournament bracket type: knockout, round-robin, league, or another format.
+- Whether the maximum player count must be a power of two.
+- Whether players can leave after joining.
+- Whether a tournament has a scheduled start time or starts manually.
+- Whether a tournament can be private, public, or both.
+- Whether tournament matches have a time limit.
+- Whether the tournament key expires or can be reused.
+- How byes, disconnections, ties, and abandoned matches are handled.
+
+### 2.5 Challenges
+
+- A player can challenge an online player.
+- A player can create a private 1-vs-1 challenge.
+- The creator receives a shareable challenge link/key.
+- The creator can configure allowed letters.
+- Another player can join using the challenge key.
+- The challenge opens a match when the second player joins.
+
+**Open decisions**
+- Whether a challenge can be accepted by anyone with the link or only by a selected account.
+- Challenge expiration time.
+- Whether the creator can cancel the challenge.
+- Whether the creator can change settings after sharing the link.
+- Whether a challenge can be reused after a match.
+
+### 2.6 Player account and statistics
+
+The account area should allow a player to:
+- View and change their username.
+- View their points.
+- View acquired/available skills.
+- View the number of tournaments played.
+- View additional statistics.
+- View graphs showing progress over time, similar in purpose to Chess.com progress graphs.
+
+**Open decisions**
+- Whether “points” means lifetime learning points, competitive rating, or both.
+- Whether usernames must be unique.
+- Whether profiles and statistics are public.
+- Which statistics are required in the first release.
+
+---
+
+## 3. Main user roles and permissions
+
+### 3.1 Guest
+
+A guest may:
+- Register or sign in.
+- View public information pages.
+
+A guest may not:
+- Join a match.
+- Join a tournament.
+- Create a challenge.
+- Use player abilities.
+
+### 3.2 Registered player
+
+A player may:
+- Edit permitted profile fields.
+- View their account and statistics.
+- See online players.
+- Challenge an online player.
+- Create a private challenge.
+- Join an eligible challenge.
+- Browse and search open tournaments.
+- Join a tournament if it is open and not full.
+- Play assigned matches.
+- Use match actions allowed by the current rules.
+
+A player may not:
+- Create or edit tournaments unless also granted the administrator role.
+- Change match results.
+- Change their score, health, armor, or ability effects directly.
+
+### 3.3 Administrator
+
+An administrator may:
+- Create tournaments.
+- Configure tournament capacity.
+- Configure allowed letters.
+- Select the tournament's permitted special moves.
+- Open, close, start, cancel, or otherwise manage tournaments according to the tournament lifecycle.
+- Inspect tournament participants and match status.
+- Apply moderation actions if such tools are implemented.
+
+Administrative actions should be recorded in an audit log.
+
+---
+
+## 4. Application architecture
+
+Use a client-server architecture. The client renders the game and sends player commands. The server validates commands, applies game rules, stores authoritative state, and broadcasts updates to both players.
+
+```text
+                         +----------------------+
+                         |       Web Client     |
+                         |----------------------|
+                         | Login / Profile      |
+                         | Lobby / Tournaments  |
+                         | Challenge screens    |
+                         | Match interface      |
+                         | Statistics           |
+                         +----------+-----------+
+                                    |
+                     HTTPS API     |     WebSocket
+                                    |
+                         +----------v-----------+
+                         |     Backend API      |
+                         |----------------------|
+                         | Authentication       |
+                         | Player/Profile       |
+                         | Lobby & Presence     |
+                         | Challenge Manager    |
+                         | Tournament Manager   |
+                         | Match Engine         |
+                         | Learning/Question    |
+                         | Statistics           |
+                         | Admin                |
+                         +----+------------+----+
+                              |            |
+                         SQL  |            | Pub/Sub / events
+                              |            |
+                    +---------v--+   +-----v-----------+
+                    | Relational |   | Realtime/Event  |
+                    | Database   |   | Infrastructure  |
+                    +------------+   +-----------------+
+                              |
+                         Optional cache
+```
+
+### 4.1 Frontend responsibilities
+
+The frontend is responsible for:
+- Displaying pages and controls.
+- Showing the match state received from the server.
+- Sending commands such as submitting an answer, activating a special move, or regenerating a resource.
+- Showing validation errors and action results.
+- Rendering timers and animations from authoritative timestamps/state.
+- Reconnecting after a temporary network interruption.
+- Never deciding the official score or match winner locally.
+
+### 4.2 Backend responsibilities
+
+The backend is responsible for:
+- Authentication and authorization.
+- Tournament and challenge creation/joining.
+- Match creation and lifecycle.
+- Selecting questions and evaluating answers.
+- Calculating points.
+- Validating health, armor, and ability actions.
+- Applying ability effects.
+- Managing timers and cooldowns.
+- Resolving match results.
+- Saving match events and statistics.
+- Broadcasting state updates to both players.
+
+### 4.3 Database responsibilities
+
+The database stores durable information:
+- Accounts and profiles.
+- Tournament configuration and membership.
+- Challenge configuration and status.
+- Match records and final results.
+- Question bank and answer metadata.
+- Match events or an equivalent audit trail.
+- Player statistics or data from which statistics can be calculated.
+
+Short-lived presence and connection data may live in a cache/realtime layer, but durable match results must be persisted.
+
+---
+
+## 5. Suggested technology choices
+
+The architecture does not depend on a particular framework. One practical implementation is:
+
+| Layer | Suggested option | Purpose |
+|---|---|---|
+| Frontend | React, Vue, or another component framework | Interface and game screens |
+| Backend | Flask with a realtime extension, or a comparable API framework | Business logic and API |
+| Realtime | WebSocket (for example, Socket.IO) | Live match updates and presence |
+| Database | PostgreSQL | Durable relational data |
+| ORM | SQLAlchemy or equivalent | Database access |
+| Cache / pub-sub | Redis, when needed | Presence, temporary state, cross-process events |
+| Testing | Unit + integration + browser tests | Verify game rules and flows |
+| Deployment | Reverse proxy + application server | Production hosting |
+
+For a small first version, begin with a **modular monolith**: one backend application divided into clear modules. Do not begin with microservices. A single deployable backend is easier to develop, test, and operate while the game rules are still changing.
+
+---
+
+## 6. Backend modules
+
+### 6.1 Authentication module
+
+Responsibilities:
+- Registration.
+- Login and logout.
+- Password hashing and password verification.
+- Session or token management.
+- Account status checks.
+- Role checks (`player`, `admin`).
+
+Security requirements:
+- Never store plaintext passwords.
+- Use a modern password-hashing algorithm.
+- Protect authenticated endpoints.
+- Validate authorization on the server for every protected action.
+- Apply rate limits to login and account-recovery endpoints.
+
+### 6.2 Player module
+
+Responsibilities:
+- Retrieve a profile.
+- Update username and permitted profile data.
+- Retrieve player points and acquired skills.
+- Retrieve match and tournament history.
+- Retrieve statistics.
+
+The profile module must not allow a client to submit arbitrary score or match-state updates.
+
+### 6.3 Presence and lobby module
+
+Responsibilities:
+- Track which authenticated players are online.
+- Display online/offline status.
+- Display players available for challenges.
+- Handle connection and disconnection events.
+- Avoid showing a player as online forever after an unexpected disconnect.
+
+Presence is ephemeral. A heartbeat or connection timeout should determine whether a connection is still active. The database should not be treated as a real-time connection tracker.
+
+### 6.4 Challenge module
+
+Responsibilities:
+- Create a challenge.
+- Generate a hard-to-guess challenge key.
+- Store challenge configuration.
+- Allow a valid opponent to join.
+- Reject joining an expired, cancelled, already-filled, or already-started challenge.
+- Create a match once both player slots are filled.
+- Notify the creator when another player joins.
+
+Suggested challenge states:
+
+```text
+CREATED -> JOINED -> MATCH_CREATED -> COMPLETED
+    |         |
+    |         +----> EXPIRED
+    +--------------> CANCELLED
+```
+
+Only one opponent should be able to claim the second slot. The join operation must be atomic to prevent two users joining the same final slot simultaneously.
+
+### 6.5 Tournament module
+
+Responsibilities:
+- Create and configure tournaments (administrator only).
+- List open/online tournaments.
+- Search tournaments.
+- Display tournament details.
+- Join by key or through an eligible listing.
+- Enforce maximum capacity.
+- Store participants.
+- Create tournament matches according to the selected tournament format.
+- Track tournament progress and final standings.
+
+Suggested tournament states:
+
+```text
+DRAFT -> OPEN -> REGISTRATION_CLOSED -> IN_PROGRESS -> COMPLETED
+   |       |             |                  |
+   +-------+-------------+------------------+----> CANCELLED
+```
+
+The exact transitions should be restricted. For example, a completed tournament must not accept new participants.
+
+**Capacity rule:** joining is allowed only when the tournament is open and the participant count is below the configured maximum. Enforce this inside a database transaction, not only by checking the number in the frontend.
+
+### 6.6 Match engine
+
+This is the most important backend module.
+
+Responsibilities:
+- Create a match with two participants.
+- Initialize each player's match state.
+- Select and deliver learning questions.
+- Receive answers.
+- Validate answers.
+- Award points.
+- Apply health and armor changes.
+- Apply special moves.
+- Track active effects and their expiration times.
+- Determine whether the match has ended.
+- Calculate and persist the result.
+- Broadcast state changes.
+
+The match engine is the **single authority** for match state. Both clients receive a representation of that state; neither client owns the official state.
+
+### 6.7 Learning and question module
+
+Responsibilities:
+- Store English exercises.
+- Organize exercises by type, level, topic, and permitted letters.
+- Select an appropriate exercise for a match.
+- Validate submitted answers.
+- Return feedback.
+- Record learning performance.
+
+Possible exercise types (proposed examples, not specified by the sketch):
+- Vocabulary: choose or enter the correct word.
+- Spelling: write a word correctly.
+- Definitions: match a word to its meaning.
+- Sentence construction: arrange words into a sentence.
+- Grammar: select the correct form.
+- Reading comprehension: answer a question about a short text.
+
+The exact exercise types must be selected as a product decision. The sketch mentions allowed letters, which suggests that at least one activity may involve producing words from a permitted set of letters. That rule needs a precise definition: whether letters are required, forbidden, or supplied as a word-building pool.
+
+### 6.8 Special-move module
+
+Responsibilities:
+- Maintain the list of available moves.
+- Filter moves according to tournament configuration.
+- Randomly select a move when regeneration is requested.
+- Validate whether the player can regenerate or activate a move.
+- Apply the effect to the correct player.
+- Track duration, cooldown, consumption, and expiration.
+- Record the result as a match event.
+
+Keep each move's rules isolated so new moves can be added without rewriting the match engine.
+
+### 6.9 Statistics module
+
+Responsibilities:
+- Record match results.
+- Aggregate points and performance.
+- Provide tournament history.
+- Provide progress data for graphs.
+- Distinguish learning performance from competitive outcomes.
+
+Suggested statistics:
+- Matches played and won.
+- Win rate.
+- Total learning points.
+- Average points per match.
+- Correct-answer rate.
+- Answer speed, if measured.
+- Performance by exercise category.
+- Tournament participation and wins.
+- Progress over time.
+
+Do not combine all these into one ambiguous “points” field. Use separate measures for match score, lifetime learning points, and any future rating system.
+
+### 6.10 Administration module
+
+Responsibilities:
+- Protect administrator-only routes.
+- Create and configure tournaments.
+- Manage permitted special moves.
+- Inspect tournament state and participants.
+- Record administrator actions.
+
+Every administrative operation should record who performed it, what changed, and when.
+
+---
+
+## 7. Core domain model
+
+The following entities are a suggested relational model. Exact columns can be adjusted during implementation.
+
+### 7.1 User
+
+| Field | Meaning |
+|---|---|
+| `id` | Unique identifier |
+| `username` | Public unique username |
+| `email` | Login/contact identifier |
+| `password_hash` | Hashed password |
+| `role` | Player or administrator |
+| `created_at` | Registration time |
+| `status` | Active, suspended, etc. |
+
+### 7.2 PlayerProfile
+
+| Field | Meaning |
+|---|---|
+| `user_id` | One-to-one link to User |
+| `display_name` | Optional display name |
+| `avatar_url` | Optional avatar |
+| `lifetime_learning_points` | Accumulated learning points |
+| `created_at` | Profile creation time |
+| `updated_at` | Last profile update |
+
+Do not store transient match health or armor in the persistent profile. Those belong to a match participant state.
+
+### 7.3 Tournament
+
+| Field | Meaning |
+|---|---|
+| `id` | Tournament identifier |
+| `name` | Tournament name |
+| `description` | Optional description |
+| `join_key_hash` | Hashed or securely stored join key |
+| `max_players` | Capacity |
+| `allowed_letters` | `all` or a configured set |
+| `status` | Tournament lifecycle state |
+| `created_by` | Administrator user ID |
+| `starts_at` | Optional start time |
+| `created_at` | Creation time |
+
+### 7.4 TournamentParticipant
+
+| Field | Meaning |
+|---|---|
+| `id` | Membership identifier |
+| `tournament_id` | Tournament |
+| `user_id` | Participant |
+| `joined_at` | Join time |
+| `status` | Active, withdrawn, disqualified, etc. |
+
+Add a unique constraint on `(tournament_id, user_id)` so the same player cannot join twice.
+
+### 7.5 TournamentSkill
+
+Stores the set of special moves permitted in a tournament.
+
+| Field | Meaning |
+|---|---|
+| `tournament_id` | Tournament |
+| `skill_id` | Special move |
+| `enabled` | Whether it is permitted |
+
+### 7.6 Challenge
+
+| Field | Meaning |
+|---|---|
+| `id` | Challenge identifier |
+| `creator_id` | Challenge creator |
+| `join_key_hash` | Secure challenge key |
+| `allowed_letters` | Challenge letter configuration |
+| `status` | Created, joined, expired, cancelled, completed |
+| `expires_at` | Expiration time |
+| `created_at` | Creation time |
+
+A challenge may also contain a selected opponent ID if challenges can be restricted to one player.
+
+### 7.7 Match
+
+| Field | Meaning |
+|---|---|
+| `id` | Match identifier |
+| `source_type` | Direct challenge, tournament, or other source |
+| `source_id` | Related challenge/tournament ID |
+| `status` | Waiting, active, completed, abandoned |
+| `started_at` | Start time |
+| `ended_at` | End time |
+| `winner_id` | Winner, nullable for a draw |
+| `end_reason` | Timer, surrender, disconnection rule, etc. |
+
+### 7.8 MatchParticipant
+
+One row per player in a match.
+
+| Field | Meaning |
+|---|---|
+| `match_id` | Match |
+| `user_id` | Player |
+| `score` | Current match points |
+| `health` | Current health |
+| `armor` | Current armor |
+| `active_skill_id` | Current held move, if any |
+| `joined_at` | Match entry time |
+| `status` | Active, disconnected, surrendered, etc. |
+
+Add a unique constraint on `(match_id, user_id)` and enforce exactly two participants for this game mode.
+
+### 7.9 Skill
+
+| Field | Meaning |
+|---|---|
+| `id` | Skill identifier |
+| `code` | Stable machine-readable code |
+| `name` | Display name |
+| `description` | Player-facing explanation |
+| `effect_type` | Internal effect category |
+| `parameters` | Validated effect configuration |
+| `is_enabled` | Whether the move can be selected |
+
+Possible `code` values:
+
+- `BLOCK_POINTS`
+- `REDUCE_POINTS_PERCENT`
+- `STEAL_POINTS_RANGE`
+- `SWAP_SKILLS`
+- `CLEAR_OPPONENT_SKILL`
+
+Avoid storing executable code in the database. Store a known effect type and validated parameters, then implement the behavior in trusted backend code.
+
+### 7.10 MatchEffect
+
+Tracks temporary effects.
+
+| Field | Meaning |
+|---|---|
+| `id` | Effect identifier |
+| `match_id` | Match |
+| `source_user_id` | Player who activated it |
+| `target_user_id` | Affected player |
+| `skill_id` | Originating move |
+| `effect_type` | Effect category |
+| `parameters` | Effect values |
+| `starts_at` | Start time |
+| `expires_at` | Expiration time |
+| `status` | Active, expired, cancelled |
+
+For the 5-second point-generation block, the server checks whether an active block effect exists when deciding whether to award points.
+
+### 7.11 Question and AnswerAttempt
+
+`Question` stores the exercise prompt, answer metadata, category, difficulty, and any letter constraints. `AnswerAttempt` stores the match, player, question, submitted answer, correctness, awarded points, and submission time.
+
+Sensitive answer keys must not be sent to the client before the player submits an answer.
+
+### 7.12 MatchEvent
+
+An append-only event history for important match actions.
+
+Examples:
+- `MATCH_STARTED`
+- `QUESTION_ISSUED`
+- `ANSWER_SUBMITTED`
+- `ANSWER_CORRECT`
+- `POINTS_AWARDED`
+- `SKILL_REGENERATED`
+- `SKILL_ACTIVATED`
+- `HEALTH_REGENERATED`
+- `ARMOR_REGENERATED`
+- `EFFECT_STARTED`
+- `EFFECT_EXPIRED`
+- `PLAYER_DISCONNECTED`
+- `MATCH_COMPLETED`
+
+Store the actor, event type, timestamp, and structured event data. This helps with debugging, statistics, dispute resolution, and replaying match history.
+
+---
+
+## 8. Match rules and state management
+
+### 8.1 Match lifecycle
+
+Suggested lifecycle:
+
+```text
+WAITING_FOR_PLAYERS
+        |
+        v
+      READY
+        |
+        v
+      ACTIVE
+        |
+        +------> PAUSED / RECONNECTING (if supported)
+        |
+        v
+    COMPLETED
+```
+
+A match should not become active until both participants are confirmed and the server has initialized their states.
+
+### 8.2 Player match state
+
+Each player has an independent state inside a match:
+
+```text
+PlayerMatchState
+  user_id
+  score
+  health
+  armor
+  active_skill
+  active_effects
+  cooldowns
+  connection_status
+```
+
+The server updates this state through validated commands. The frontend receives a safe snapshot after each accepted action.
+
+### 8.3 Scoring
+
+The sketch says that players gain points and that the winner is the player who gains more points. It does not define the scoring formula.
+
+A proposed baseline:
+1. The server issues a question.
+2. The player submits an answer.
+3. The server validates the answer.
+4. The server calculates the points for that answer.
+5. The server checks whether point generation is currently blocked.
+6. The server updates the score and emits a match event.
+7. Both clients receive the updated scores.
+
+**Open decision:** Define the point formula. For example, a fixed number of points per correct answer is simpler for the first version. Difficulty and speed multipliers can be introduced later.
+
+Do not trust a score value sent by the client. The client sends an answer; the server calculates the score.
+
+### 8.4 Health and armor
+
+The sketch includes health and armor but does not define their role in winning a match.
+
+Recommended interpretation to confirm:
+- Health and armor are separate defensive resources.
+- Regeneration restores 20% of maximum health or 15% of maximum armor.
+- Neither value can exceed its configured maximum.
+- The exact effects of damage, armor absorption, and zero health must be defined before those systems are activated.
+
+Until these rules are agreed, health and armor can be displayed and regenerated, but should not silently change the winner calculation.
+
+### 8.5 Special-move behavior
+
+| Move | Required server behavior |
+|---|---|
+| Block point generation for 5 seconds | Create a timed effect on the opponent; reject or suppress point awards during the effect according to the final scoring rule |
+| Reduce opponent points by 20% | Calculate the reduction from the opponent's current score; define rounding and minimum score behavior |
+| Take 12–30 points | Generate an amount in the configured range; transfer points from opponent to actor, subject to the opponent's available score |
+| Switch skills | Exchange the two players' held skills; define behavior if one player has no skill |
+| Clear opponent skill | Remove the opponent's held skill; define separately whether active effects are also cancelled |
+
+All percentages, ranges, durations, and caps should be configuration values validated by the backend.
+
+### 8.6 Random move regeneration
+
+Random selection must happen on the server:
+1. Read the permitted skill pool for the match.
+2. Exclude disabled or unavailable skills.
+3. Apply any selection restrictions, if configured.
+4. Select one skill using a server-side random generator.
+5. Save the result.
+6. Notify the player.
+
+The client must never choose the skill ID or claim that a random selection occurred.
+
+### 8.7 Concurrency and fairness
+
+Two players may submit actions at nearly the same time. The backend must serialize or safely coordinate state changes for a given match. Use a database transaction, row lock, or equivalent per-match command queue.
+
+Every state-changing request should include a unique command/request ID. This makes retries idempotent and helps prevent duplicate point awards when a player reconnects or a network request is repeated.
+
+### 8.8 Match completion
+
+The final winner rule from the sketch is higher points. The match-ending condition itself is still undefined.
+
+Once the ending condition is agreed:
+- Stop accepting new gameplay actions.
+- Resolve pending effects according to the rules.
+- Compare the two final scores.
+- Set the winner, or a draw if scores are equal and draws are allowed.
+- Persist the result and final participant states.
+- Emit `MATCH_COMPLETED`.
+- Update player and tournament statistics.
+
+---
+
+## 9. Realtime communication
+
+Use ordinary HTTP requests for operations that do not require immediate live updates, and WebSockets for live match events and presence.
+
+### 9.1 HTTP API examples
+
+These are proposed endpoint shapes, not an existing API contract.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register |
+| `POST` | `/api/auth/login` | Login |
+| `GET` | `/api/me` | Current profile |
+| `PATCH` | `/api/me` | Update permitted profile fields |
+| `GET` | `/api/players/online` | Online players |
+| `POST` | `/api/challenges` | Create challenge |
+| `GET` | `/api/challenges/{key}` | Get challenge details |
+| `POST` | `/api/challenges/{key}/join` | Join challenge |
+| `GET` | `/api/tournaments` | List/search tournaments |
+| `POST` | `/api/tournaments` | Create tournament (admin only) |
+| `GET` | `/api/tournaments/{id}` | Tournament details |
+| `POST` | `/api/tournaments/{id}/join` | Join tournament |
+| `GET` | `/api/matches/{id}` | Match snapshot |
+| `GET` | `/api/me/statistics` | Player statistics |
+| `GET` | `/api/me/history` | Match/tournament history |
+
+For match commands, use a consistent command endpoint or WebSocket command protocol. Do not expose separate unrestricted endpoints that let a client set score, health, armor, or winner fields.
+
+### 9.2 WebSocket events
+
+Client-to-server command examples:
+
+- `match.join`
+- `answer.submit`
+- `skill.regenerate`
+- `skill.activate`
+- `resource.regenerate`
+- `match.leave`
+
+Server-to-client event examples:
+
+- `presence.updated`
+- `challenge.joined`
+- `match.ready`
+- `match.started`
+- `question.issued`
+- `answer.result`
+- `match.state`
+- `skill.updated`
+- `effect.started`
+- `effect.expired`
+- `player.disconnected`
+- `player.reconnected`
+- `match.completed`
+
+Every event should include a match ID, event ID, server timestamp, and relevant payload. The server should send enough state for the client to update reliably, while avoiding private information such as answer keys.
+
+### 9.3 Reconnection
+
+If a player disconnects:
+- Mark the connection as disconnected, not immediately as a loss.
+- Allow a defined reconnection grace period.
+- Keep the match state on the server.
+- On reconnection, authenticate the player and send a fresh match snapshot.
+- Define what happens if the grace period expires.
+
+The duration and forfeiture rule are open product decisions.
+
+---
+
+## 10. Frontend information architecture
+
+### 10.1 Main navigation
+
+Suggested navigation:
+
+```text
+Application
+├── Home / Dashboard
+├── Play
+│   ├── Online players
+│   ├── Challenge a player
+│   ├── Create private challenge
+│   └── Join with challenge key
+├── Tournaments
+│   ├── Online tournaments
+│   ├── Search tournaments
+│   ├── Tournament details
+│   └── Join with tournament key
+├── Account
+│   ├── Profile
+│   ├── Points and skills
+│   ├── Match history
+│   └── Statistics and graphs
+└── Admin (administrator only)
+    ├── Create tournament
+    ├── Configure tournament
+    └── Manage tournaments
+```
+
+### 10.2 Dashboard
+
+Show:
+- Player identity and summary.
+- Current points/rating, with clear labels.
+- Online players or a shortcut to the lobby.
+- Open tournaments.
+- Recent matches.
+- Progress summary.
+
+### 10.3 Online players
+
+Show:
+- Username.
+- Online/available status.
+- Relevant public statistics, if enabled.
+- A challenge action.
+
+Prevent users from challenging themselves. Prevent duplicate pending challenges if the product rules do not allow them.
+
+### 10.4 Create challenge screen
+
+Fields:
+- Optional challenge name.
+- Allowed letters (`all` by default).
+- Optional opponent restriction.
+- Optional expiration, if supported.
+
+After creation:
+- Display the challenge key/link.
+- Provide a copy action.
+- Display waiting status.
+- Update when the opponent joins.
+
+### 10.5 Tournament listing
+
+Each tournament item should show:
+- Name.
+- Participant count and maximum capacity.
+- Status.
+- Start information, if applicable.
+- Join availability.
+- A details view.
+
+The join button must be disabled when the tournament is full or closed, but the server must still enforce those rules.
+
+### 10.6 Tournament details
+
+Show:
+- Tournament name and description.
+- Current status.
+- Capacity and participant count.
+- Allowed letters.
+- Enabled special moves and their effects.
+- Start information.
+- Join action when eligible.
+
+### 10.7 Match screen
+
+The match screen is the central gameplay interface.
+
+Suggested layout:
+
+```text
++---------------------------------------------------------+
+| Player A                         Player B               |
+| Health / Armor                   Health / Armor          |
+| Score                            Score                   |
+|                                                         |
+|                 Match activity area                     |
+|             Question / answer controls                  |
+|                                                         |
+| Player A skill                     Player B skill        |
+|                                                         |
+| Regenerate health / armor / special move controls       |
+|                                                         |
+| Match timer / status / connection status                |
++---------------------------------------------------------+
+```
+
+The sketch uses two tank-like player areas. They can be represented with simple panels and basic animations initially. The visual tank animation is presentation only; the server state remains authoritative.
+
+Show shortcuts directly on buttons, including the intended `Ctrl + 0`, `Ctrl + 1`, and `Ctrl + 2` mapping after it is confirmed. Keyboard shortcuts must not trigger while the user is typing in an input field. Provide accessible clickable controls as an alternative.
+
+### 10.8 Account and statistics
+
+Show:
+- Username and profile settings.
+- Lifetime learning points, separately from match scores.
+- Skills or unlocked content, if applicable.
+- Total matches and tournaments played.
+- Win/loss/draw record.
+- Graphs over time.
+- Category-level learning performance.
+
+Use clear labels, date ranges, and definitions so that a graph cannot be mistaken for a competitive rating if it actually represents learning points.
+
+### 10.9 Admin screens
+
+The tournament creation form should include:
+- Tournament name.
+- Maximum participants.
+- Allowed letters, defaulting to `all`.
+- Enabled special moves.
+- Any additional options approved for the tournament format.
+
+Validate all values on the server even if the frontend validates them first.
+
+---
+
+## 11. Security and anti-cheat
+
+Because this is a competitive game, the server must own all important decisions.
+
+### 11.1 Never trust the client for
+
+- Current score.
+- Correctness of an answer.
+- Health or armor values.
+- Random special-move selection.
+- Effect duration or expiration.
+- Tournament capacity.
+- Match winner.
+- Administrator permissions.
+
+### 11.2 Required protections
+
+- Password hashing.
+- Authentication on private endpoints and WebSocket connections.
+- Role-based authorization.
+- Input validation and output encoding.
+- Rate limiting for login, joining, answer submission, and ability activation.
+- Secure, high-entropy challenge and tournament keys.
+- Expiration and revocation for keys where appropriate.
+- CSRF protection if cookie-based authentication is used.
+- Safe CORS configuration.
+- Database constraints and transactions.
+- Audit records for administrative actions and important match events.
+- Protection against duplicate command submission.
+- Avoid exposing answer keys before submission.
+
+### 11.3 Abuse cases to handle
+
+- Joining a full tournament through simultaneous requests.
+- Joining a challenge twice.
+- Submitting the same answer repeatedly.
+- Replaying a previous ability-activation request.
+- Sending a fake score from browser developer tools.
+- Guessing challenge keys.
+- Using an ability after a match has ended.
+- Remaining marked online after losing connection.
+- Attempting to create a tournament as a normal player.
+
+---
+
+## 12. Statistics and data collection
+
+Statistics should be based on recorded events and validated results.
+
+### 12.1 Separate score concepts
+
+Use distinct concepts:
+
+- **Match score:** points earned during one match; resets for a new match.
+- **Lifetime learning points:** cumulative points earned from learning activity.
+- **Competitive rating:** optional rating used to estimate competitive strength; not defined in the sketch.
+- **Tournament record:** participation and placement information.
+
+Do not reuse one database field for all four.
+
+### 12.2 Suggested graphs
+
+- Learning points by day/week/month.
+- Correct-answer rate over time.
+- Matches won and lost over time.
+- Average match score.
+- Performance by exercise category.
+- Tournament participation and results.
+
+### 12.3 Data correctness
+
+A completed match should be the source of truth for match history. If statistics are cached or pre-aggregated for performance, they must be rebuildable from authoritative match records/events.
+
+---
+
+## 13. Error handling and edge cases
+
+The system should define clear outcomes for:
+
+- Invalid or expired join key.
+- Tournament full.
+- Tournament closed or already started.
+- Player already registered in a tournament.
+- Challenge already joined or cancelled.
+- Player attempts to join their own challenge.
+- Match already completed.
+- Wrong or expired question.
+- Invalid answer payload.
+- Ability unavailable or on cooldown.
+- Insufficient points for a transfer.
+- Network interruption.
+- Duplicate client command.
+- Player closes the browser during a match.
+- Administrator attempts an invalid tournament transition.
+
+Return stable error codes and human-readable messages. Do not expose internal stack traces to players.
+
+---
+
+## 14. Testing strategy
+
+### 14.1 Unit tests
+
+Test isolated game rules:
+- Point calculation.
+- Health regeneration percentage and cap.
+- Armor regeneration percentage and cap.
+- Point reduction by 20%.
+- Point transfer within the 12–30 range.
+- Point transfer when the opponent has fewer points.
+- Five-second block expiration.
+- Skill switching.
+- Clearing a held skill.
+- Random selection from an allowed skill pool.
+- Match winner calculation.
+
+### 14.2 Integration tests
+
+Test complete backend flows:
+- Register and log in.
+- Create and join a challenge.
+- Create a tournament as administrator.
+- Reject tournament creation as a player.
+- Join a tournament.
+- Reject a join when full.
+- Start a match with two players.
+- Submit answers and update scores.
+- Activate and expire special moves.
+- Complete a match and save the winner.
+- Update player statistics.
+
+### 14.3 Realtime tests
+
+Test:
+- Both players receive the same authoritative score.
+- Both players receive ability and effect updates.
+- Reconnection restores the current match snapshot.
+- Duplicate commands do not duplicate effects or points.
+- Simultaneous join requests cannot exceed tournament capacity.
+- Simultaneous match actions do not corrupt state.
+
+### 14.4 Frontend tests
+
+Test:
+- Correct rendering of health, armor, scores, and active moves.
+- Disabled controls when actions are unavailable.
+- Keyboard shortcuts and their input-field safeguards.
+- Full tournament and expired challenge messages.
+- Responsive match layout.
+- Accessible button labels and keyboard navigation.
+
+---
+
+## 15. Suggested project structure
+
+A modular monolith can use a structure similar to:
+
+```text
+english-game/
+├── backend/
+│   ├── app/
+│   │   ├── auth/
+│   │   ├── users/
+│   │   ├── profiles/
+│   │   ├── presence/
+│   │   ├── challenges/
+│   │   ├── tournaments/
+│   │   ├── matches/
+│   │   │   ├── engine/
+│   │   │   ├── rules/
+│   │   │   ├── effects/
+│   │   │   └── events/
+│   │   ├── learning/
+│   │   ├── skills/
+│   │   ├── statistics/
+│   │   ├── admin/
+│   │   ├── common/
+│   │   └── config/
+│   ├── migrations/
+│   ├── tests/
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── auth/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   │   ├── dashboard/
+│   │   │   ├── lobby/
+│   │   │   ├── challenges/
+│   │   │   ├── tournaments/
+│   │   │   ├── match/
+│   │   │   ├── account/
+│   │   │   └── admin/
+│   │   ├── realtime/
+│   │   ├── state/
+│   │   └── styles/
+│   └── tests/
+│
+├── docs/
+│   ├── architecture.md
+│   ├── game-rules.md
+│   └── api.md
+│
+└── README.md
+```
+
+The folder names are a proposal. Keep modules independent, but avoid creating abstractions before there is a real need for them.
+
+---
+
+## 16. Implementation roadmap
+
+Build the product in vertical slices so that each phase produces a working system.
+
+### Phase 1 — Product rules and foundation
+
+1. Decide the exercise type and how allowed letters work.
+2. Define match duration and ending conditions.
+3. Define point calculation.
+4. Define health and armor behavior.
+5. Confirm regeneration shortcut mapping.
+6. Define ability costs, cooldowns, and use limits.
+7. Define tie and disconnection rules.
+8. Create the project, database, migrations, and authentication.
+
+**Deliverable:** Users can register and sign in; the core game rules are written and testable.
+
+### Phase 2 — Learning activity and local match engine
+
+1. Create the question model and a small question bank.
+2. Implement answer validation.
+3. Implement server-side scoring.
+4. Implement two-player match state.
+5. Implement match completion and result storage.
+6. Build a basic match interface.
+
+**Deliverable:** Two authenticated players can complete a match and receive a reliable result.
+
+### Phase 3 — Health, armor, and special moves
+
+1. Add health and armor state.
+2. Add regeneration actions.
+3. Add the special-move catalogue.
+4. Implement random server-side move regeneration.
+5. Implement each special move.
+6. Add effect expiration and cooldown handling.
+7. Add realtime state updates.
+
+**Deliverable:** The match supports the mechanics described in the sketch.
+
+### Phase 4 — Challenges and online presence
+
+1. Add online presence.
+2. Display available players.
+3. Create private challenges.
+4. Generate and validate challenge keys.
+5. Allow an opponent to join.
+6. Create the match automatically.
+7. Handle cancellation, expiration, and reconnection.
+
+**Deliverable:** Players can challenge each other and start private 1-vs-1 matches.
+
+### Phase 5 — Tournaments
+
+1. Build administrator-only tournament creation.
+2. Add capacity and allowed-letter configuration.
+3. Add permitted-skill configuration.
+4. Display and search open tournaments.
+5. Join through listing or key.
+6. Enforce capacity atomically.
+7. Implement the selected tournament format.
+8. Track tournament results.
+
+**Deliverable:** Administrators can create tournaments and players can join and compete.
+
+### Phase 6 — Profiles and statistics
+
+1. Add profile editing.
+2. Add match and tournament history.
+3. Separate lifetime learning points from match scores.
+4. Add statistics endpoints.
+5. Add progress graphs.
+6. Add category-level learning summaries.
+
+**Deliverable:** Players can review their progress and competitive history.
+
+### Phase 7 — Polish and release
+
+1. Improve animations and visual feedback.
+2. Add sound only if desired.
+3. Improve responsive layout and accessibility.
+4. Add abuse protection and monitoring.
+5. Run load and concurrency tests.
+6. Deploy and test backup/recovery procedures.
+
+**Deliverable:** A stable first public release.
+
+---
+
+## 17. Decisions required before implementation
+
+These are the most important unresolved product decisions. They should be answered before the match engine is considered final.
+
+| Priority | Question | Why it matters |
+|---|---|---|
+| Critical | What exactly does a player do to earn points? | Defines the learning loop and question system |
+| Critical | What does “allowed letters” mean in an exercise? | Determines question generation and answer validation |
+| Critical | How does a match end? | Required for match lifecycle and winner calculation |
+| Critical | What is the point formula? | Required for fair scoring |
+| High | What are starting and maximum health/armor values? | Required for regeneration and resource logic |
+| High | Does health/armor affect winning or only gameplay? | Defines combat rules |
+| High | What are the costs, cooldowns, and limits for regeneration and special moves? | Prevents undefined or unlimited actions |
+| High | Does “clear opponent skill” remove only the held move or active effects too? | Avoids ambiguous ability behavior |
+| High | What tournament format is required? | Determines match scheduling and standings |
+| High | What happens when a player disconnects? | Required for fair online matches |
+| Medium | Are challenge links public to anyone who has them or restricted to a named opponent? | Determines access control |
+| Medium | What does the account's “points” represent? | Prevents confusion between match score and lifetime progress |
+| Medium | Which exercise categories and English levels are included initially? | Defines the learning content |
+
+---
+
+## 18. Recommended first-release scope
+
+To avoid building every feature at once, the first playable release should contain:
+
+- Registration and login.
+- Player profile.
+- A small, well-defined English exercise type.
+- Server-authoritative 1-vs-1 matches.
+- Match scoring and a clear end condition.
+- Health and armor regeneration, once their values are decided.
+- A limited set of special moves.
+- Private challenge creation and joining.
+- Basic match history.
+
+Add tournaments after the challenge/match flow is stable. Add advanced graphs, animations, and extra exercise types after the core gameplay has been tested with real players.
+
+---
+
+## 19. Final architecture principles
+
+1. **Learning drives scoring:** ordinary points come from validated English activities.
+2. **The server owns the match:** scores, random moves, timers, effects, and winners are calculated server-side.
+3. **The database owns durable history:** completed matches and tournament results must survive reconnects and restarts.
+4. **Realtime is a delivery mechanism:** WebSockets distribute state; they do not replace authoritative backend rules.
+5. **Rules are explicit:** every effect, cap, cooldown, and match-ending condition must have a precise definition.
+6. **Build a modular monolith first:** keep responsibilities separated without premature microservices.
+7. **Separate learning progress from competitive score:** they measure different things.
+8. **Make the first version playable before polishing it:** correct rules and reliable matches matter more than animations.
+
+This document is an initial architecture derived from the supplied concept sketch. Proposed implementation details and recommendations are identified as such; unresolved game rules remain decisions rather than assumed facts.
