@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Create Challenge{% endblock %}
+{% block page %}challenge-create{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-2xl card bg-base-100 border border-base-300">
+  <div class="card-body">
+    <h1 class="card-title text-2xl">Create a private challenge</h1>
+    <p class="text-sm opacity-70">The settings are locked when you share the link. Wait for a second player to join.</p>
+    <form id="challenge-form" class="flex flex-col gap-4 mt-4">
+      <label class="form-control">
+        <span class="label-text font-semibold">Allowed letters</span>
+        <input name="letters" class="input input-bordered" value="AEIOURSTLND" minlength="6" maxlength="12" required />
+        <span class="label-text-alt">6-12 unique letters, shared by both players.</span>
+      </label>
+      <fieldset class="flex flex-wrap gap-2" id="skill-options"></fieldset>
+      <button class="btn btn-warning" type="submit">Create challenge</button>
+    </form>
+    <div id="challenge-result" class="hidden mt-4 alert alert-success"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/challenges.js"></script>{% endblock %}

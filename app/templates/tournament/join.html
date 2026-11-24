@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Join Tournament{% endblock %}
+{% block page %}tournament-join{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-xl card bg-base-100 border border-base-300">
+  <div class="card-body">
+    <h1 class="card-title text-2xl">Join with a tournament key</h1>
+    <p class="text-sm opacity-70">The administrator gives this key to registered players.</p>
+    <form id="tournament-join-form" class="flex flex-col gap-4 mt-4">
+      <label class="form-control">
+        <span class="label-text font-semibold">Tournament key</span>
+        <input id="tournament-key" class="input input-bordered uppercase" placeholder="TXXXXXXXXXXXX" required />
+      </label>
+      <button class="btn btn-warning" type="submit">Join tournament</button>
+    </form>
+    <p id="key-error" class="text-error font-semibold hidden"></p>
+    <div id="join-result" class="mt-4"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/tournaments.js"></script>{% endblock %}

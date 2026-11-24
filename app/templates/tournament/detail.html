@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Tournament{% endblock %}
+{% block page %}tournament-detail{% endblock %}
+{% block content %}
+<div id="tournament-meta" data-id="{{ tournament_id }}" class="mx-auto max-w-3xl card bg-base-100 border border-base-300">
+  <div class="card-body">
+    <h1 id="tournament-name" class="card-title text-2xl">Tournament</h1>
+    <div id="tournament-details" class="mt-4"><span class="loading loading-spinner loading-md"></span></div>
+    <form id="tournament-join-form" class="flex gap-2 mt-6 hidden">
+      <input id="tournament-key" class="input input-bordered flex-1 uppercase" placeholder="Tournament key" required />
+      <button class="btn btn-warning" type="submit">Join</button>
+    </form>
+    <p id="key-error" class="text-error font-semibold hidden"></p>
+    <div id="join-result" class="mt-4"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/tournaments.js"></script>{% endblock %}

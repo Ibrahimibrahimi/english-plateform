@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Challenge Details{% endblock %}
+{% block page %}challenge-search{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-2xl card bg-base-100 border border-base-300">
+  <div class="card-body">
+    <h1 class="card-title text-2xl">Look up a challenge</h1>
+    <form id="search-form" class="flex gap-2 mt-4">
+      <input id="search-key" class="input input-bordered flex-1 uppercase" placeholder="Challenge key" required />
+      <button class="btn btn-warning" type="submit">Search</button>
+    </form>
+    <div id="challenge-details" class="mt-4"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/challenges.js"></script>{% endblock %}

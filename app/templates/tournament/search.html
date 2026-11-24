@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Find Tournament{% endblock %}
+{% block page %}tournament-search{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl flex flex-col gap-6">
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body">
+      <h1 class="card-title text-2xl">Find a tournament</h1>
+      <form id="tournament-search-form" class="flex gap-2 mt-2">
+        <input id="tournament-search" class="input input-bordered flex-1" placeholder="Search by name" />
+        <button class="btn btn-warning" type="submit">Search</button>
+      </form>
+    </div>
+  </div>
+  <div id="tournament-list" class="grid gap-3 md:grid-cols-2"><span class="loading loading-spinner loading-md"></span></div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/tournaments.js"></script>{% endblock %}

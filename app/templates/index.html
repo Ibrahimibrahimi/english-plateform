@@ -1,149 +1,45 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Game Name | Home</title>
+{% extends "base.html" %}
+{% block title %}SpellBattle | Home{% endblock %}
+{% block page %}home{% endblock %}
+{% block content %}
+<div class="mx-auto flex max-w-5xl flex-col gap-6">
+  <section class="text-center fade-in">
+    <div class="badge badge-warning badge-outline mb-3">1 vs 1 spelling battles</div>
+    <h1 class="text-4xl md:text-5xl font-extrabold">Welcome to the Arena</h1>
+    <p class="mt-4 text-base md:text-lg opacity-80">
+      Build English words from the given letters, earn points and power up your tank.
+      <br />
+      <span class="font-bold badge mt-2">Improve your spelling while you climb the leaderboard!</span>
+    </p>
+  </section>
 
-  <!-- Tailwind (browser build) + DaisyUI -->
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
-</head>
-
-<body class="bg-base-200 min-h-screen">
-
-  <!-- ============ DRAWER (left menu) ============ -->
-  <div class="drawer">
-    <input id="menu-drawer" type="checkbox" class="drawer-toggle" />
-
-    <div class="drawer-content flex flex-col min-h-screen">
-
-      <!-- ============ TOP BAR ============ -->
-      <header class="navbar bg-base-100 border-b border-base-300 px-4">
-        <div class="navbar-start">
-          <label for="menu-drawer" class="btn btn-square btn-ghost" aria-label="Open menu" title="Menu (press M)">
-            <!-- hamburger -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </label>
-        </div>
-
-        <div class="navbar-center">
-          <a href="index.html" class="text-xl font-extrabold tracking-wide">Spell<span class="text-warning">Battle</span></a>
-        </div>
-
-        <div class="navbar-end gap-2">
-          <!-- theme toggle -->
-          <label class="swap swap-rotate btn btn-ghost btn-circle" title="Toggle theme">
-            <input id="theme-toggle" type="checkbox" />
-            <svg class="swap-off h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M5.64 17l-.71.71a1 1 0 000 1.41 1 1 0 001.41 0l.71-.71A1 1 0 005.64 17zM5 12a1 1 0 00-1-1H3a1 1 0 000 2h1a1 1 0 001-1zm7-7a1 1 0 001-1V3a1 1 0 00-2 0v1a1 1 0 001 1zM5.64 7.05a1 1 0 00.7.29 1 1 0 00.71-.29 1 1 0 000-1.41l-.71-.71a1 1 0 00-1.41 1.41zm12 .29a1 1 0 00.7-.29l.71-.71a1 1 0 10-1.41-1.41l-.71.71a1 1 0 000 1.41 1 1 0 00.71.29zM21 11h-1a1 1 0 000 2h1a1 1 0 000-2zm-9 8a1 1 0 00-1 1v1a1 1 0 002 0v-1a1 1 0 00-1-1zm6.36-2A1 1 0 0017 18.36l.71.71a1 1 0 001.41 0 1 1 0 000-1.41zM12 6.5A5.5 5.5 0 1017.5 12 5.51 5.51 0 0012 6.5zm0 9A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z"/></svg>
-            <svg class="swap-on h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M21.64 13a1 1 0 00-1.05-.14 8.05 8.05 0 01-3.37.73 8.15 8.15 0 01-8.14-8.1 8.59 8.59 0 01.25-2A1 1 0 008 2.36a10.14 10.14 0 1014 11.69 1 1 0 00-.36-1.05zm-9.5 6.69A8.14 8.14 0 017.08 5.22v.27A10.15 10.15 0 0017.22 15.63a9.79 9.79 0 002.1-.22 8.11 8.11 0 01-7.18 4.32z"/></svg>
-          </label>
-
-          <!-- profile = link to another page -->
-          <a href="profile.html" class="tooltip tooltip-bottom" data-tip="Your profile" aria-label="Profile">
-            <div class="avatar avatar-placeholder transition-transform hover:scale-110">
-              <div class="bg-warning text-warning-content w-11 rounded-full ring-2 ring-base-content/80 ring-offset-2 ring-offset-base-100">
-                <span class="text-sm font-bold" id="avatar-initials">P1</span>
-              </div>
-            </div>
-          </a>
-        </div>
-      </header>
-
-      <!-- ============ MAIN ============ -->
-      <main class="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-10">
-
-        <!-- intro text -->
-        <section class="text-center max-w-2xl fade-in">
-          <div class="badge badge-warning badge-outline mb-3">50 players are live !</div>
-          <h1 class="text-4xl md:text-5xl font-extrabold">Welcome to the Arena</h1>
-          <p class="mt-4 text-base md:text-lg opacity-80">
-            Tournament challenges are <span class="font-bold">player 1 vs 1</span>,
-            and the winner is whoever gains <span class="font-bold">more points</span>.
-            <br> <span class="font-bold badge">Player to improove your class in front of others !</span>
-          </p>
-        </section>
-
-        <!-- ============ STAGE (the dashed blue area) ============ -->
-        <section class="stage bg-info/10 rounded-box w-full max-w-4xl p-6 md:p-10 fade-in" style="animation-delay:.1s">
-          <!-- TODO: create the documentation for the game here in the section + game with playing recorded-->
-          <h2> Documentation is comming soon.</h2>
-        </section>
-          <!-- quick links -->
-        <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-4xl fade-in" style="animation-delay:.2s">
-          <a href="tournaments.html" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
-            <div class="card-body">
-              <h3 class="card-title">🏆 Tournaments</h3>
-              <p class="opacity-70 text-sm">Join a bracket and climb the ranks.</p>
-            </div>
-          </a>
-          <a href="leaderboard.html" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
-            <div class="card-body">
-              <h3 class="card-title">📊 Leaderboard</h3>
-              <p class="opacity-70 text-sm">See who is on top this season.</p>
-            </div>
-          </a>
-          <button id="btn-howto" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition text-left">
-            <div class="card-body">
-              <h3 class="card-title">❓ How to play</h3>
-              <p class="opacity-70 text-sm">The rules in 30 seconds.</p>
-            </div>
-          </button>
-        </section>
-      </main>
-
-      <footer class="footer footer-center p-4 text-sm opacity-60">
-        <p>© <span id="year"></span> Game Name. Press <kbd class="kbd kbd-sm">M</kbd> to open the menu.</p>
-      </footer>
+  <section class="stage bg-info/10 rounded-box p-6 md:p-10 fade-in">
+    <h2 class="text-2xl font-extrabold mb-3">How the battle works</h2>
+    <div class="grid gap-3 md:grid-cols-2 text-sm">
+      <p><span class="font-bold">Letters:</span> the admin gives both players the same letters each round.</p>
+      <p><span class="font-bold">Words:</span> use only those letters and never repeat one inside a word.</p>
+      <p><span class="font-bold">Points:</span> longer words earn more points and fire your tank.</p>
+      <p><span class="font-bold">Defence:</span> armor absorbs damage first, then health. Zero health ends the match.</p>
+      <p><span class="font-bold">Specials:</span> block, drain, steal, switch or clear skills.</p>
+      <p><span class="font-bold">Winning:</span> knock out the opponent or lead on points when the rounds end.</p>
     </div>
+  </section>
 
-    <!-- ============ SIDE MENU ============ -->
-    <div class="drawer-side z-50">
-      <label for="menu-drawer" aria-label="Close menu" class="drawer-overlay"></label>
-      <aside class="bg-base-100 min-h-full w-72 p-4 flex flex-col gap-2">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-lg font-extrabold">Menu</span>
-          <label for="menu-drawer" class="btn btn-sm btn-circle btn-ghost">✕</label>
-        </div>
+  <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 fade-in">
+    <a href="/play-tournament" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
+      <div class="card-body"><h3 class="card-title">🏆 Tournaments</h3><p class="opacity-70 text-sm">Join an admin tournament with a key.</p></div>
+    </a>
+    <a href="/leaderboard" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
+      <div class="card-body"><h3 class="card-title">📊 Leaderboard</h3><p class="opacity-70 text-sm">See who earns the most learning points.</p></div>
+    </a>
+    <button data-open-howto class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition text-left">
+      <div class="card-body"><h3 class="card-title">❓ How to play</h3><p class="opacity-70 text-sm">The rules in 30 seconds.</p></div>
+    </button>
+  </section>
 
-        <ul class="menu w-full gap-1 p-0" id="side-menu">
-          <li><a href="/" class="active">🏠 Home</a></li>
-          <li><a href="./playing.html">🎮 Play</a></li>
-          <li><a href="./play-with-friend">👥 Play With Friend</a></li>
-          <li><a href="/user/leaderboard">📊 Leaderboard</a></li>
-          <li><a href="/friends">👥 Online players</a></li>
-        </ul>
-
-        <div class="mt-auto">
-          <a href="profile.html" class="btn btn-warning w-full">How to play</a>
-        </div>
-      </aside>
-    </div>
+  <div class="text-center">
+    <a href="/play" class="btn btn-warning btn-lg">Enter the arena</a>
   </div>
-
-  <!-- ============ HOW TO PLAY MODAL ============ -->
-  <dialog id="howto-modal" class="modal">
-    <div class="modal-box">
-      <h3 class="text-lg font-bold">How to play</h3>
-      <ol class="list-decimal ml-5 mt-3 space-y-2 opacity-90">
-        <li>Join a tournament and get matched with one opponent.</li>
-        <li>Both players take on the same challenge rounds.</li>
-        <li>Every round earns you points.</li>
-        <li>After the last round, the player with more points wins.</li>
-      </ol>
-      <div class="modal-action">
-        <form method="dialog"><button class="btn btn-warning">Got it</button></form>
-      </div>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
-  </dialog>
-
-  <!-- toast area -->
-  <div class="toast toast-end z-[60]" id="toasts"></div>
-  <script src="../static/js/index.js"></script>
-
-</body>
-</html>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/home.js"></script>{% endblock %}

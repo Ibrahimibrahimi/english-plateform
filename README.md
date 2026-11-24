@@ -4,63 +4,80 @@ An English learning platform built around **SpellBattle**, a real-time 1v1 spell
 
 ## SpellBattle
 
-Each player commands a tank. The tank's armor (HP bar), attack and special move are determined by the amount of points the player has. Points are earned by typing valid English words built from the letters chosen by the admin. The system decides automatically how points improve the tank; the player never allocates them manually.
+Two players compete by building English words from a shared set of letters. Valid words earn points and fire the player's tank at the opponent. The winner is the player with more points at the end of the match, or the player who knocks out the opponent's tank first.
 
-### Rules
+### Learning loop
 
-- The admin defines a pool of letters for each round. Both players receive the same letters.
-- A word may only use those letters, and no letter may be repeated inside a word.
-- Words are checked against an offline English dictionary bundled with the server.
-- Word length determines how many points are earned: longer words are worth more.
-- Earned points automatically raise armor and attack and unlock special moves.
-- A valid word fires the tank at the opponent and reduces their armor.
-- A battle ends immediately when a tank's armor reaches zero (KO). If all rounds are played, the player with the most points wins. Ties are resolved with a sudden-death round.
+- The admin creates letter sets (6-12 unique letters) and tournaments.
+- Every round gives both players the same letters.
+- Players type words using only those letters, with no letter repeated inside a word.
+- Words are checked against an offline English dictionary in `app/data/words.txt`.
+- Score grows with word length: 3 letters = 3 points, 4 = 6, 5 = 10, and so on.
 
-### Shortcuts
+### Tanks and resources
 
-- `Ctrl + 0` — activate special move
-- `Ctrl + 1` — regenerate HP (costs points, limited cooldown)
+Points automatically improve the tank; the player never allocates them manually:
+
+- **Health** and **armor** have configurable maximums derived from points.
+- Damage is absorbed by armor first, then health. Zero health ends the match.
+- Regeneration restores 20% of maximum health or 15% of maximum armor, capped at the maximum, with a point cost and cooldown.
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl + 0` | Activate the held special move |
+| `Ctrl + 1` | Regenerate health (+20%) |
+| `Ctrl + 2` | Regenerate armor (+15%) |
+| `Ctrl + 3` | Draw a new random special move |
+
+Keyboard shortcuts are ignored while typing in an input. Every action also has a clickable button.
 
 ### Special moves
 
-Specials unlock at point thresholds and each can be used once per match:
+A player holds one special move at a time. It is drawn randomly on the server from the moves allowed by the tournament or challenge, and activating it consumes the card.
 
-- **Drain** — decrease the opponent's points
-- **Swap points** — exchange points with the opponent
-- **Swap skill** — exchange your special moves with the opponent
-- **Clear skill** — remove the opponent's unused special moves
+- `BLOCK_POINTS` — block the opponent's point generation for 5 seconds
+- `REDUCE_POINTS_PERCENT` — reduce opponent points by 20%
+- `STEAL_POINTS_RANGE` — take 12-30 points from the opponent
+- `SWAP_SKILLS` — switch held moves with the opponent
+- `CLEAR_OPPONENT_SKILL` — remove the opponent's held move
+
+### Match flow
+
+5 rounds of 60 seconds are played. A knockout wins immediately. After the final round the higher score wins; a tie triggers one sudden-death round. Disconnects allow a 30-second reconnect grace period before forfeiture. All scoring, timers, random draws and effects are decided by the server and broadcast over WebSocket.
 
 ## Stack
 
 - **Backend:** Python, FastAPI, WebSocket, SQLAlchemy with SQLite
 - **Frontend:** vanilla ES modules, Tailwind CSS and DaisyUI via CDN
-- **Dictionary:** offline word list stored in `app/data/words.txt`
+- **Dictionary:** offline word list vendored in the repository
 
 ## Structure
 
 ```
 app/
-  config.py        settings and tunable game constants
-  db.py            SQLAlchemy engine and session helpers
-  models.py        database models
-  auth.py          password hashing and signed session cookies
-  main.py          FastAPI application entry point
+  config.py          settings and game constants
+  db.py              SQLAlchemy engine and session helpers
+  models.py          accounts, tournaments, challenges, matches, events
+  auth.py            password hashing and signed session cookies
+  main.py            FastAPI application
   game/
-    words.py       dictionary loading and word validation
-    rules.py       scoring, tank stats, specials and healing
-    arena.py       authoritative live match state
-  routers/
-    auth.py        signup, login, logout, current user
-    pages.py       HTML page routes
-    api.py         challenges, tournaments, leaderboard, validation
-    admin.py       admin letter pools and tournaments
-    ws.py          WebSocket battle endpoint
-  static/          CSS and JavaScript modules
-  templates/       Jinja page templates
-  data/words.txt   offline English dictionary
-tests/             pytest suite
-run.py             uvicorn launcher
+    words.py         dictionary loading and validation
+    rules.py         scoring, stats, regeneration and skill effects
+    arena.py         authoritative live match state
+    service.py       match setup and result persistence
+    presence.py      online player tracking
+  routers/           auth, REST API, admin, pages, WebSocket
+  static/js/         vanilla ES modules
+  static/css/        custom styling
+  templates/         Jinja pages
+  data/words.txt     offline dictionary
+tests/               pytest suite
+run.py               uvicorn launcher
 ```
+
+## Pages
+
+`/` home · `/play` mode chooser (friend, challenge, tournament) · `/play-with-friend` · `/play-challenge` · `/play-tournament` · `/challenge/create` · `/challenge/join` · `/tournament/search` · `/tournament/join` · `/players` · `/leaderboard` · `/practice` · `/profile` · `/playing/{id}` · `/admin`
 
 ## Running locally
 
@@ -69,7 +86,7 @@ python -m pip install -r requirements.txt
 python run.py
 ```
 
-Open http://127.0.0.1:8000. Set `SECRET_KEY` in the environment for a real deployment. The first admin is bootstrapped from `ADMIN_EMAIL` and `ADMIN_PASSWORD` (defaults to `admin@spellbattle.local` / `admin123`).
+Open http://127.0.0.1:8000. Set `SECRET_KEY` in the environment for a real deployment. The first admin is created from `ADMIN_EMAIL` and `ADMIN_PASSWORD` (defaults: `admin@spellbattle.local` / `admin123`).
 
 ## Checks
 

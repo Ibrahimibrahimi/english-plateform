@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Play Tournament{% endblock %}
+{% block page %}play-tournament{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl flex flex-col gap-6">
+  <div class="text-center"><h1 class="text-3xl font-extrabold">Play Tournament</h1><p class="opacity-70 mt-2">Admin-created 1v1 tournaments with shared rules.</p></div>
+  <div class="grid gap-4 md:grid-cols-2">
+    <a href="/tournament/search" class="card bg-base-100 border border-base-300 hover:border-warning">
+      <div class="card-body"><h2 class="card-title">Browse tournaments</h2><p class="text-sm opacity-70">Search open events and read their configuration.</p></div>
+    </a>
+    <a href="/tournament/join" class="card bg-base-100 border border-base-300 hover:border-warning">
+      <div class="card-body"><h2 class="card-title">Join with a tournament key</h2><p class="text-sm opacity-70">Enter the key given by the administrator.</p></div>
+    </a>
+  </div>
+  <section class="card bg-base-100 border border-base-300">
+    <div class="card-body">
+      <h2 class="card-title">Open tournaments</h2>
+      <div id="tournament-list" class="grid gap-3 md:grid-cols-2"><span class="loading loading-spinner loading-md"></span></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/tournaments.js"></script>{% endblock %}

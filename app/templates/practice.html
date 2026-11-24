@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Practice{% endblock %}
+{% block page %}practice{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl card bg-base-100 border border-base-300">
+  <div class="card-body">
+    <h1 class="card-title text-2xl">Practice spelling</h1>
+    <p class="text-sm opacity-70">Choose letters, then find as many valid English words as you can in 60 seconds.</p>
+    <div class="grid gap-4 sm:grid-cols-2 mt-4">
+      <label class="form-control"><span class="label-text font-semibold">Letters</span><input id="practice-letters" class="input input-bordered uppercase" value="AEIOURSTLND" /></label>
+      <div class="stat"><div class="stat-title">Score</div><div class="stat-value text-warning" id="practice-score">0</div></div>
+    </div>
+    <form id="practice-form" class="flex gap-2 mt-4">
+      <input id="practice-word" class="input input-bordered flex-1" placeholder="Your word" autocomplete="off" required />
+      <button class="btn btn-warning" type="submit">Submit</button>
+    </form>
+    <div class="mt-6"><progress id="practice-timer" class="progress progress-warning w-full" value="60" max="60"></progress><span id="practice-time" class="text-sm">60s</span></div>
+    <div id="practice-words" class="flex flex-wrap gap-2 mt-4"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/practice.js"></script>{% endblock %}

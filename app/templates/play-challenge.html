@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Play Challenge{% endblock %}
+{% block page %}play-challenge{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl flex flex-col gap-6">
+  <div class="text-center"><h1 class="text-3xl font-extrabold">Play Challenge</h1><p class="opacity-70 mt-2">Private 1v1 matches with your own configuration.</p></div>
+  <div class="grid gap-4 md:grid-cols-2">
+    <a href="/challenge/create" class="card bg-base-100 border border-base-300 hover:border-warning">
+      <div class="card-body"><h2 class="card-title">Create a challenge</h2><p class="text-sm opacity-70">Pick the allowed letters and available skills, then copy the shareable link.</p></div>
+    </a>
+    <a href="/challenge/join" class="card bg-base-100 border border-base-300 hover:border-warning">
+      <div class="card-body"><h2 class="card-title">Join a challenge</h2><p class="text-sm opacity-70">Use a key from a friend to enter their match.</p></div>
+    </a>
+  </div>
+  <a href="/challenge/search" class="btn btn-outline w-fit mx-auto">Look up a challenge</a>
+</div>
+{% endblock %}

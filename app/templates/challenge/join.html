@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Join Challenge{% endblock %}
+{% block page %}challenge-join{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-xl card bg-base-100 border border-base-300">
+  <div class="card-body">
+    <h1 class="card-title text-2xl">Join a challenge</h1>
+    <p class="text-sm opacity-70">Enter the key shared by the challenge creator.</p>
+    <form id="join-form" class="flex flex-col gap-4 mt-4">
+      <label class="form-control">
+        <span class="label-text font-semibold">Challenge key</span>
+        <input id="challenge-key" name="key" class="input input-bordered uppercase" placeholder="CXXXXXXXXXXXX" required />
+      </label>
+      <button class="btn btn-warning" type="submit">Join match</button>
+    </form>
+    <p id="key-error" class="text-error font-semibold hidden"></p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/challenges.js"></script>{% endblock %}
