@@ -168,19 +168,22 @@ if (meta) {
         ended = true;
         setControlsEnabled(false);
         clearTimeout(reconnectTimer);
-        // A knockout sends no final state, so sync the closing numbers before the finale.
+        // Final numbers come with the closing message: draw both cards and the arena from it.
         for (const [id, player] of Object.entries(message.payload.players || {})) {
-          if (sideById[id]) fx.sync(sideById[id], player);
+          if (sideById[id]) renderPlayer(player, sideById[id], Number(id) === myId);
         }
         fx.end(message.payload.winner_id == null ? null : sideById[message.payload.winner_id]);
-        result.classList.remove("hidden");
-        if (message.payload.winner_id === null) {
-          result.textContent = "Match ended in a draw.";
-        } else if (message.payload.winner_id === myId) {
-          result.textContent = "Victory! Your tank wins.";
-        } else {
-          result.textContent = "Defeat. Better spelling next round.";
-        }
+        // The result box waits until the last soldier has landed.
+        fx.whenIdle(() => {
+          result.classList.remove("hidden");
+          if (message.payload.winner_id === null) {
+            result.textContent = "Match ended in a draw.";
+          } else if (message.payload.winner_id === myId) {
+            result.textContent = "Victory! Your tank wins.";
+          } else {
+            result.textContent = "Defeat. Better spelling next round.";
+          }
+        });
         addLog(`Match ended: ${message.payload.reason}`);
       }
     });

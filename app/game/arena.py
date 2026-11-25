@@ -337,10 +337,10 @@ class LiveMatch:
                     "payload": {"user_id": user_id, "word": candidate, "points": gained, "message": detail},
                 }
             )
+            self.broadcast_state()
             if knocked_out:
                 self._finish_locked("ko", winner_id=user_id)
                 return
-            self.broadcast_state()
 
     def regenerate(self, user_id: int, resource: str) -> None:
         with self._lock:
