@@ -15,21 +15,21 @@
   <link href="/static/css/index.css" rel="stylesheet" />
 </head>
 <body class="bg-base-200 min-h-screen antialiased" data-page="{% block page %}{% endblock %}" data-user-id="{{ user.id if user else '' }}">
-  <a class="skip-link btn btn-warning btn-sm" href="#main-content">Skip to content</a>
+  <a class="skip-link btn btn-primary btn-sm" href="#main-content">Skip to content</a>
 
   <div class="drawer">
     <input id="menu-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content flex min-h-screen flex-col">
-      <header class="navbar sticky top-0 z-40 border-b border-base-300 bg-base-100/90 px-3 backdrop-blur-xl sm:px-5">
+      <header class="app-header navbar sticky top-0 z-40 px-3 sm:px-5">
         <div class="navbar-start gap-2">
           <label for="menu-drawer" class="btn btn-square btn-ghost lg:hidden" aria-label="Open menu" title="Menu (press M)">
             {{ icon("menu", "h-5 w-5") }}
           </label>
-          <a href="/" class="group flex items-center gap-2" aria-label="SpellBattle home">
-            <span class="grid h-9 w-9 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning shadow-lg transition-transform group-hover:rotate-6">
+          <a href="/" class="flex items-center gap-2.5" aria-label="SpellBattle home">
+            <span class="icon-tile h-9 w-9">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" /></svg>
             </span>
-            <span class="font-display text-lg font-bold tracking-wide sm:text-xl">Spell<span class="glow-text">Battle</span></span>
+            <span class="font-display text-lg font-bold tracking-tight sm:text-xl">Spell<span class="text-primary">Battle</span></span>
           </a>
         </div>
 
@@ -57,7 +57,7 @@
           <div class="dropdown dropdown-end">
             <label tabindex="0" class="btn btn-ghost btn-circle relative" aria-label="Notifications" title="Notifications">
               {{ icon("bell", "h-5 w-5") }}
-              <span id="notification-count" class="badge badge-warning badge-xs absolute -right-1 -top-1 hidden">0</span>
+              <span id="notification-count" class="badge badge-accent badge-xs absolute -right-1 -top-1 hidden">0</span>
             </label>
             <ul tabindex="0" id="notification-list" class="dropdown-content menu z-[70] w-[min(20rem,calc(100vw-2rem))] rounded-box border border-base-300 bg-base-100 p-2 shadow-2xl">
               <li class="menu-title">Notifications</li>
@@ -66,7 +66,7 @@
           </div>
           <div class="dropdown dropdown-end">
             <label tabindex="0" class="btn btn-ghost btn-circle avatar" aria-label="Account menu">
-              <div id="avatar-initials" class="flex w-11 items-center justify-center overflow-hidden rounded-full text-xl ring-2 ring-warning/70 ring-offset-2 ring-offset-base-100"{% if not avatar.image_url %} style="background:{{ avatar.color }}"{% endif %}>
+              <div id="avatar-initials" class="flex w-11 items-center justify-center overflow-hidden rounded-full text-xl ring-2 ring-primary/40 ring-offset-2 ring-offset-base-100"{% if not avatar.image_url %} style="background:{{ avatar.color }}"{% endif %}>
                 {% if avatar.image_url %}<img src="{{ avatar.image_url }}" alt="Your avatar" class="h-full w-full object-cover" />{% else %}<span>{{ avatar.emoji }}</span>{% endif %}
               </div>
             </label>
@@ -74,7 +74,7 @@
               <li class="menu-title">
                 <span class="flex flex-col gap-1">
                   <span id="account-username" class="font-display text-sm font-bold">{{ user.username }}</span>
-                  <span class="badge badge-warning badge-sm self-start">{{ user.lifetime_learning_points }} pts</span>
+                  <span class="badge badge-accent badge-sm self-start">{{ user.lifetime_learning_points }} pts</span>
                 </span>
               </li>
               <li><a href="/profile">{{ icon("user", "h-4 w-4") }}Profile</a></li>
@@ -83,7 +83,7 @@
             </ul>
           </div>
           {% else %}
-          <a href="/profile?next={{ request.path | urlencode }}" class="btn btn-warning btn-sm gap-1">{{ icon("arrow", "h-4 w-4") }}Log in</a>
+          <a href="/profile?next={{ request.path | urlencode }}" class="btn btn-primary btn-sm gap-1">{{ icon("arrow", "h-4 w-4") }}Log in</a>
           {% endif %}
         </div>
       </header>
@@ -94,16 +94,16 @@
 
       <footer class="footer footer-center gap-1 p-5 text-sm opacity-70">
         <p>© <span id="year"></span> SpellBattle</p>
-        <p>Press <kbd class="kbd kbd-sm">M</kbd> for the command deck.</p>
+        <p>Press <kbd class="kbd kbd-sm">M</kbd> to open the menu.</p>
       </footer>
     </div>
 
     <div class="drawer-side z-50">
       <label for="menu-drawer" aria-label="Close menu" class="drawer-overlay"></label>
-      <aside class="flex min-h-full w-[min(19rem,86vw)] flex-col gap-3 border-r border-base-300 bg-base-100 p-4">
+      <aside class="app-drawer flex min-h-full w-[min(19rem,86vw)] flex-col gap-3 p-4">
         <div class="flex items-center justify-between">
           <div>
-            <span class="eyebrow">Command deck</span>
+            <span class="eyebrow">Menu</span>
             <div class="font-display text-xl font-bold">SpellBattle</div>
           </div>
           <label for="menu-drawer" class="btn btn-sm btn-circle btn-ghost" aria-label="Close menu">{{ icon("close", "h-4 w-4") }}</label>
@@ -115,7 +115,7 @@
           <li><a href="/play-with-friend" data-nav class="nav-link">{{ icon("users", "h-4 w-4") }}Play with a friend</a></li>
           <li><a href="/leaderboard" data-nav class="nav-link">{{ icon("trophy", "h-4 w-4") }}Leaderboard</a></li>
           <li><a href="/players" data-nav class="nav-link">{{ icon("users", "h-4 w-4") }}Online players</a></li>
-          <li><a href="/friends" data-nav class="nav-link">{{ icon("friends", "h-4 w-4") }}Friends<span id="friend-request-count" class="badge badge-warning badge-xs hidden">0</span></a></li>
+          <li><a href="/friends" data-nav class="nav-link">{{ icon("friends", "h-4 w-4") }}Friends<span id="friend-request-count" class="badge badge-accent badge-xs hidden">0</span></a></li>
           <li><a href="/challenge/list" data-nav class="nav-link">{{ icon("key", "h-4 w-4") }}Private challenges</a></li>
           <li><a href="/tournament/search" data-nav class="nav-link">{{ icon("trophy", "h-4 w-4") }}Tournaments</a></li>
           {% if user and user.role == 'admin' %}
@@ -124,7 +124,7 @@
           {% endif %}
         </ul>
         <div class="mt-auto flex flex-col gap-2">
-          <button id="howto-btn" class="btn btn-warning w-full gap-2">{{ icon("play", "h-4 w-4") }}How to play</button>
+          <button id="howto-btn" class="btn btn-primary w-full gap-2">{{ icon("play", "h-4 w-4") }}How to play</button>
           {% if user %}
           <div class="stat-tile">
             <span>Lifetime points</span>
@@ -141,10 +141,10 @@
   <dialog id="howto-modal" class="modal">
     <div class="modal-box panel max-w-2xl">
       <div class="flex items-center gap-3">
-        <span class="grid h-10 w-10 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("play", "h-5 w-5") }}</span>
+        <span class="icon-tile h-10 w-10">{{ icon("play", "h-5 w-5") }}</span>
         <div>
           <h3 class="text-xl font-bold">How to play</h3>
-          <p class="text-sm opacity-70">Turn letters into words. Words into firepower.</p>
+          <p class="text-sm opacity-70">Turn letters into words, then words into points.</p>
         </div>
       </div>
       <ol class="ml-5 mt-4 list-decimal space-y-2 text-sm opacity-90">
@@ -156,7 +156,7 @@
         <li><kbd class="kbd kbd-sm">Ctrl</kbd>+<kbd class="kbd kbd-sm">0</kbd> special move, <kbd class="kbd kbd-sm">Ctrl</kbd>+<kbd class="kbd kbd-sm">1</kbd> health, <kbd class="kbd kbd-sm">Ctrl</kbd>+<kbd class="kbd kbd-sm">2</kbd> armor.</li>
       </ol>
       <div class="modal-action">
-        <form method="dialog"><button class="btn btn-warning">Got it</button></form>
+        <form method="dialog"><button class="btn btn-primary">Got it</button></form>
       </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
