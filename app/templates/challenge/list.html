@@ -1,20 +1,19 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon, page_head %}
 {% block title %}SpellBattle | Private challenges{% endblock %}
 {% block page %}challenge-list{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-6xl flex flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <h1 class="text-3xl font-extrabold">Private challenges</h1>
-      <p class="opacity-70 mt-2">Open 1v1 challenges created by other players. Join one with a single click.</p>
-    </div>
-    <div class="flex gap-2">
-      <a href="/challenge/create" class="btn btn-warning">Create a challenge</a>
-      <a href="/challenge/search" class="btn btn-outline">Look up by key</a>
-    </div>
+<div class="page-shell flex flex-col gap-5">
+  {% call page_head("Private challenges", "Open 1v1 challenges created by other players. Join one with a single click.", "Challenge network") %}
+  <div class="flex flex-wrap gap-2">
+    <a href="/challenge/create" class="btn btn-warning gap-2">{{ icon("plus", "h-4 w-4") }}Create challenge</a>
+    <a href="/challenge/search" class="btn btn-outline gap-2">{{ icon("search", "h-4 w-4") }}By key</a>
   </div>
+  {% endcall %}
   <div id="challenge-list" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-    <span class="loading loading-spinner loading-md"></span>
+    <div class="skeleton h-32"></div>
+    <div class="skeleton h-32"></div>
+    <div class="skeleton h-32"></div>
   </div>
 </div>
 {% endblock %}

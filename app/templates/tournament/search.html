@@ -1,18 +1,22 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon, page_head %}
 {% block title %}SpellBattle | Find Tournament{% endblock %}
 {% block page %}tournament-search{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-5xl flex flex-col gap-6">
-  <div class="card bg-base-100 border border-base-300">
-    <div class="card-body">
-      <h1 class="card-title text-2xl">Find a tournament</h1>
-      <form id="tournament-search-form" class="flex gap-2 mt-2">
-        <input id="tournament-search" class="input input-bordered flex-1" placeholder="Search by name" />
-        <button class="btn btn-warning" type="submit">Search</button>
-      </form>
-    </div>
+<div class="page-shell flex flex-col gap-5">
+  {% call page_head("Find a tournament", "Search open events and join the bracket.", "Tournament circuit") %}
+  <a href="/tournament/join" class="btn btn-outline gap-2">{{ icon("key", "h-4 w-4") }}Use a key</a>
+  {% endcall %}
+  <section class="panel panel-pad fade-in">
+    <form id="tournament-search-form" class="flex flex-col gap-2 sm:flex-row">
+      <input id="tournament-search" class="input input-bordered flex-1" placeholder="Search by name" autocomplete="off" />
+      <button class="btn btn-warning gap-2" type="submit">{{ icon("search", "h-4 w-4") }}Search</button>
+    </form>
+  </section>
+  <div id="tournament-list" class="grid gap-3 md:grid-cols-2">
+    <div class="skeleton h-32"></div>
+    <div class="skeleton h-32"></div>
   </div>
-  <div id="tournament-list" class="grid gap-3 md:grid-cols-2"><span class="loading loading-spinner loading-md"></span></div>
 </div>
 {% endblock %}
 {% block scripts %}<script type="module" src="/static/js/tournaments.js"></script>{% endblock %}
