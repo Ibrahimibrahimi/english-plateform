@@ -1,6 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from flask import Blueprint, abort, g, jsonify, request
 
 from app.auth import (
     clear_session,
@@ -10,62 +8,64 @@ from app.auth import (
     set_session,
     verify_password,
 )
-from app.db import get_db
 from app.game.presence import touch
 from app.models import User
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-
-class SignupIn(BaseModel):
-    username: str = Field(min_length=3, max_length=50)
-    email: str = Field(min_length=5, max_length=120)
-    password: str = Field(min_length=8, max_length=128)
-
-
-class LoginIn(BaseModel):
-    email: str
-    password: str
+router = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
 @router.post("/signup")
-def signup(payload: SignupIn, response: Response, db: Session = Depends(get_db)):
-    email = payload.email.strip().lower()
-    username = payload.username.strip()
-    if "@" not in email:
-        raise HTTPException(status_code=400, detail="Invalid email")
+def signup():
+    db = g.db
+    payload = request.get_json(force=True) or {}
+    username = str(payload.get("username", "")).strip()
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    if not (3 <= len(username) <= 50):
+        abort(400, description="Username must be 3-50 characters")
+    if "@" not in email or not (5 <= len(email) <= 120):
+        abort(400, description="Invalid email")
+    if not (8 <= len(password) <= 128):
+        abort(400, description="Password must be at least 8 characters")
     if db.query(User).filter(User.email == email).first():
-        raise HTTPException(status_code=409, detail="Email already registered")
+        abort(409, description="Email already registered")
     if db.query(User).filter(User.username == username).first():
-        raise HTTPException(status_code=409, detail="Username already taken")
-    user = User(username=username, email=email, password_hash=hash_password(payload.password))
+        abort(409, description="Username already taken")
+    user = User(username=username, email=email, password_hash=hash_password(password))
     db.add(user)
     db.commit()
+    response = jsonify(public_user(user))
     set_session(response, user.id)
     touch(user.id)
-    return public_user(user)
+    return response
 
 
 @router.post("/login")
-def login(payload: LoginIn, response: Response, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
-    if user is None or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+def login():
+    db = g.db
+    payload = request.get_json(force=True) or {}
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    user = db.query(User).filter(User.email == email).first()
+    if user is None or not verify_password(password, user.password_hash):
+        abort(401, description="Invalid credentials")
     if user.status != "active":
-        raise HTTPException(status_code=403, detail="Account is not active")
+        abort(403, description="Account is not active")
+    response = jsonify(public_user(user))
     set_session(response, user.id)
     touch(user.id)
-    return public_user(user)
+    return response
 
 
 @router.post("/logout")
-def logout(response: Response):
+def logout():
+    response = jsonify({"ok": True})
     clear_session(response)
-    return {"ok": True}
+    return response
 
 
 @router.get("/me")
-def me(request: Request):
-    user = require_user(request)
+def me():
+    user = require_user()
     touch(user.id)
-    return public_user(user)
+    return jsonify(public_user(user))

@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import secrets
 
-from fastapi import HTTPException, Request, Response
+from flask import abort, g, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from app import config
@@ -44,7 +44,7 @@ def read_token(token: str | None) -> int | None:
         return None
 
 
-def set_session(response: Response, user_id: int) -> None:
+def set_session(response, user_id: int) -> None:
     response.set_cookie(
         COOKIE_NAME,
         make_token(user_id),
@@ -54,12 +54,13 @@ def set_session(response: Response, user_id: int) -> None:
     )
 
 
-def clear_session(response: Response) -> None:
+def clear_session(response) -> None:
     response.delete_cookie(COOKIE_NAME)
 
 
-def current_user(request: Request) -> User | None:
-    user_id = read_token(request.cookies.get(COOKIE_NAME))
+def current_user(req=None) -> User | None:
+    req = req or request
+    user_id = read_token(req.cookies.get(COOKIE_NAME))
     if user_id is None:
         return None
     db = SessionLocal()
@@ -69,17 +70,20 @@ def current_user(request: Request) -> User | None:
         db.close()
 
 
-def require_user(request: Request) -> User:
-    user = current_user(request)
+def require_user(req=None) -> User:
+    req = req or request
+    user = getattr(g, "current_user", None)
     if user is None:
-        raise HTTPException(status_code=401, detail="Login required")
+        user = current_user(req)
+    if user is None:
+        abort(401, description="Login required")
     return user
 
 
-def require_admin(request: Request) -> User:
-    user = require_user(request)
+def require_admin(req=None) -> User:
+    user = require_user(req)
     if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+        abort(403, description="Admin only")
     return user
 
 

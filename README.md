@@ -47,7 +47,7 @@ A player holds one special move at a time. It is drawn randomly on the server fr
 
 ## Stack
 
-- **Backend:** Python, FastAPI, WebSocket, SQLAlchemy with SQLite
+- **Backend:** Python, Flask, Flask-Sock WebSockets, SQLAlchemy with SQLite
 - **Frontend:** vanilla ES modules, Tailwind CSS and DaisyUI via CDN
 - **Dictionary:** offline word list vendored in the repository
 
@@ -59,7 +59,7 @@ app/
   db.py              SQLAlchemy engine and session helpers
   models.py          accounts, tournaments, challenges, matches, events
   auth.py            password hashing and signed session cookies
-  main.py            FastAPI application
+  main.py            Flask application and bootstrapping
   game/
     words.py         dictionary loading and validation
     rules.py         scoring, stats, regeneration and skill effects
@@ -72,7 +72,7 @@ app/
   templates/         Jinja pages
   data/words.txt     offline dictionary
 tests/               pytest suite
-run.py               uvicorn launcher
+run.py               Flask launcher
 ```
 
 ## Pages

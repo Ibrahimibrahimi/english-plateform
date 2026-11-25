@@ -1,18 +1,15 @@
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from flask import Flask, g, jsonify, request
+from werkzeug.exceptions import HTTPException
 
 from app import config
-from app.auth import COOKIE_NAME, hash_password, read_token
+from app.auth import COOKIE_NAME, current_user, hash_password, read_token
 from app.db import SessionLocal, init_db
 from app.game.presence import touch
 from app.models import LetterSet, User
 from app.routers import admin, api, auth, pages, ws
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def _seed():
     init_db()
     db = SessionLocal()
     try:
@@ -31,23 +28,45 @@ async def lifespan(app: FastAPI):
             db.commit()
     finally:
         db.close()
-    yield
 
 
-app = FastAPI(title="SpellBattle", lifespan=lifespan)
-app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
+def create_app() -> Flask:
+    app = Flask(__name__, static_folder=str(config.STATIC_DIR), template_folder=str(config.TEMPLATES_DIR))
+    app.config["SECRET_KEY"] = config.SECRET_KEY
+    app.config["SOCK_SERVER_OPTIONS"] = {"ping_interval": 25}
+
+    _seed()
+
+    @app.before_request
+    def load_user():
+        g.current_user = None
+        g.db = SessionLocal()
+        user_id = read_token(request.cookies.get(COOKIE_NAME))
+        if user_id is not None:
+            touch(user_id)
+            g.current_user = current_user()
+
+    @app.teardown_request
+    def close_db(_exc=None):
+        db = g.pop("db", None)
+        if db is not None:
+            db.close()
+
+    @app.errorhandler(HTTPException)
+    def handle_http_error(exc):
+        detail = exc.description or exc.name
+        return jsonify({"detail": detail}), exc.code
+
+    @app.errorhandler(ValueError)
+    def handle_value_error(exc):
+        return jsonify({"detail": str(exc)}), 400
+
+    app.register_blueprint(pages.router)
+    app.register_blueprint(auth.router)
+    app.register_blueprint(api.router)
+    app.register_blueprint(admin.router)
+    ws.register(app)
+    return app
 
 
-@app.middleware("http")
-async def presence_middleware(request, call_next):
-    user_id = read_token(request.cookies.get(COOKIE_NAME))
-    if user_id is not None:
-        touch(user_id)
-    return await call_next(request)
-
-
-app.include_router(auth.router)
-app.include_router(api.router)
-app.include_router(admin.router)
-app.include_router(ws.router)
-app.include_router(pages.router)
+app = create_app()

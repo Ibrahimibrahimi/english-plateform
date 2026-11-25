@@ -1,5 +1,6 @@
-import asyncio
+import json
 import math
+import threading
 import time
 
 from app import config
@@ -33,14 +34,14 @@ class LiveMatch:
         self.on_finish = on_finish
         self.on_event = on_event
         self.connections: dict[int, object] = {}
-        self.disconnect_tasks: dict[int, asyncio.Task] = {}
+        self.disconnect_tasks: dict[int, threading.Timer] = {}
         self.status = "active" if len(players) == 2 else "waiting"
         self.round_index = -1
         self.round_deadline = 0.0
         self.submitted: dict[int, set[str]] = {uid: set() for uid in players}
         self.sudden_death = False
         self.winner_id: int | None = None
-        self._timer: asyncio.Task | None = None
+        self._timer: threading.Timer | None = None
 
     def public_state(self) -> dict:
         now = time.monotonic()
@@ -58,7 +59,7 @@ class LiveMatch:
             "status": self.status,
             "round_index": self.round_index,
             "total_rounds": len(self.rounds),
-            "seconds_left": max(0, math.ceil(self.round_deadline - now)),
+            "seconds_left": max(0, math.ceil(self.round_deadline - time.monotonic())) if self.round_deadline else 0,
             "letters": self.rounds[self.round_index]["letters"] if self.round_index >= 0 else "",
             "winner_id": self.winner_id,
             "players": players,
@@ -67,18 +68,25 @@ class LiveMatch:
     def opponent_id(self, user_id: int) -> int | None:
         return next((uid for uid in self.players if uid != user_id), None)
 
-    async def connect(self, user_id: int, websocket: object) -> bool:
-        if user_id not in self.players:
-            await websocket.send_json({"type": "error", "message": "You are not in this match"})
+    def _send(self, websocket, message: dict) -> bool:
+        try:
+            websocket.send(json.dumps(message))
+            return True
+        except Exception:
             return False
-        task = self.disconnect_tasks.pop(user_id, None)
-        if task is not None:
-            task.cancel()
+
+    def connect(self, user_id: int, websocket) -> bool:
+        if user_id not in self.players:
+            self._send(websocket, {"type": "error", "message": "You are not in this match"})
+            return False
+        timer = self.disconnect_tasks.pop(user_id, None)
+        if timer is not None:
+            timer.cancel()
         self.players[user_id]["connected"] = True
         self.connections[user_id] = websocket
-        await websocket.send_json({"type": "state", "payload": self.public_state()})
+        self._send(websocket, {"type": "state", "payload": self.public_state()})
         if len(self.connections) == len(self.players) and self.status == "waiting":
-            await self.start()
+            self.start()
         return True
 
     def disconnect(self, user_id: int) -> None:
@@ -87,21 +95,20 @@ class LiveMatch:
             return
         self.players[user_id]["connected"] = False
         self.emit_event("player.disconnected", user_id, {})
-        task = asyncio.create_task(self._forfeit_after_grace(user_id))
-        self.disconnect_tasks[user_id] = task
+        timer = threading.Timer(config.RECONNECT_GRACE_SECONDS, self._forfeit_after_grace, args=(user_id,))
+        timer.daemon = True
+        self.disconnect_tasks[user_id] = timer
+        timer.start()
 
-    async def _forfeit_after_grace(self, user_id: int) -> None:
-        await asyncio.sleep(config.RECONNECT_GRACE_SECONDS)
-        if self.status == "active" and not self.players[user_id]["connected"]:
+    def _forfeit_after_grace(self, user_id: int) -> None:
+        if self.status == "active" and not self.players.get(user_id, {}).get("connected"):
             winner = self.opponent_id(user_id)
-            await self.finish("disconnect", winner_id=winner)
+            self.finish("disconnect", winner_id=winner)
 
-    async def broadcast(self, message: dict) -> None:
+    def broadcast(self, message: dict) -> None:
         dead = []
         for uid, websocket in list(self.connections.items()):
-            try:
-                await websocket.send_json(message)
-            except Exception:
+            if not self._send(websocket, message):
                 dead.append(uid)
         for uid in dead:
             self.connections.pop(uid, None)
@@ -109,25 +116,25 @@ class LiveMatch:
     def emit_event(self, event: str, user_id: int, data: dict) -> None:
         if self.on_event is not None:
             self.on_event(self.match_id, event, user_id, data)
-        asyncio.create_task(
-            self.broadcast({"type": "event", "event": event, "user_id": user_id, "payload": data})
-        )
+        self.broadcast({"type": "event", "event": event, "user_id": user_id, "payload": data})
 
-    async def start(self) -> None:
+    def start(self) -> None:
         self.status = "active"
         self.emit_event("match.started", 0, {})
-        self._timer = asyncio.create_task(self._timer_loop())
-        await self.next_round()
+        self._timer = threading.Timer(1.0, self._timer_tick)
+        self._timer.daemon = True
+        self._timer.start()
+        self.next_round()
 
-    async def next_round(self) -> None:
+    def next_round(self) -> None:
         self.round_index += 1
         if self.round_index >= len(self.rounds):
-            await self.finish("rounds")
+            self.finish("rounds")
             return
         current = self.rounds[self.round_index]
         self.round_deadline = time.monotonic() + current["duration_seconds"]
         self.submitted = {uid: set() for uid in self.players}
-        await self.broadcast(
+        self.broadcast(
             {
                 "type": "round_start",
                 "payload": {
@@ -139,37 +146,41 @@ class LiveMatch:
             }
         )
         self.emit_event("question.issued", 0, {"index": self.round_index, "letters": current["letters"]})
-        await self.broadcast_state()
+        self.broadcast_state()
 
-    async def _timer_loop(self) -> None:
-        while self.status == "active":
-            await asyncio.sleep(1)
-            if self.round_deadline and time.monotonic() >= self.round_deadline:
-                await self.broadcast({"type": "event", "event": "round.ended", "payload": {}})
-                await self.next_round()
+    def _timer_tick(self) -> None:
+        if self.status != "active":
+            return
+        if self.round_deadline and time.monotonic() >= self.round_deadline:
+            self.broadcast({"type": "event", "event": "round.ended", "payload": {}})
+            self.next_round()
+        if self.status == "active":
+            self._timer = threading.Timer(1.0, self._timer_tick)
+            self._timer.daemon = True
+            self._timer.start()
 
-    async def broadcast_state(self) -> None:
-        await self.broadcast({"type": "state", "payload": self.public_state()})
+    def broadcast_state(self) -> None:
+        self.broadcast({"type": "state", "payload": self.public_state()})
 
-    async def _error(self, user_id: int, message: str) -> None:
+    def _error(self, user_id: int, message: str) -> None:
         websocket = self.connections.get(user_id)
         if websocket is not None:
-            await websocket.send_json({"type": "error", "message": message})
+            self._send(websocket, {"type": "error", "message": message})
 
-    async def submit_word(self, user_id: int, word: str, command_id: str = "") -> None:
+    def submit_word(self, user_id: int, word: str, command_id: str = "") -> None:
         if self.status != "active" or self.round_index < 0:
-            await self._error(user_id, "The match is not active")
+            self._error(user_id, "The match is not active")
             return
         if time.monotonic() > self.round_deadline:
-            await self._error(user_id, "The round has ended")
+            self._error(user_id, "The round has ended")
             return
         candidate = (word or "").strip().lower()
         letters = self.rounds[self.round_index]["letters"]
         if candidate in self.submitted[user_id]:
-            await self._error(user_id, "You already used that word this round")
+            self._error(user_id, "You already used that word this round")
             return
         if not is_valid_word(candidate, letters):
-            await self._error(user_id, "Invalid word")
+            self._error(user_id, "Invalid word")
             return
 
         self.submitted[user_id].add(candidate)
@@ -193,20 +204,20 @@ class LiveMatch:
             apply_damage(actor, opponent)
             knocked_out = opponent["health"] == 0
 
-        await self.broadcast(
+        self.broadcast(
             {
                 "type": "word",
                 "payload": {"user_id": user_id, "word": candidate, "points": gained, "message": detail},
             }
         )
         if knocked_out:
-            await self.finish("ko", winner_id=user_id)
+            self.finish("ko", winner_id=user_id)
             return
-        await self.broadcast_state()
+        self.broadcast_state()
 
-    async def regenerate(self, user_id: int, resource: str) -> None:
+    def regenerate(self, user_id: int, resource: str) -> None:
         if self.status != "active":
-            await self._error(user_id, "The match is not active")
+            self._error(user_id, "The match is not active")
             return
         player = self.players[user_id]
         actions = {
@@ -215,38 +226,38 @@ class LiveMatch:
             "skill": (regenerate_skill, "skill.regenerated", (player, self.skill_pool)),
         }
         if resource not in actions:
-            await self._error(user_id, "Unknown resource")
+            self._error(user_id, "Unknown resource")
             return
         func, event, args = actions[resource]
         try:
             detail = func(*args)
         except ValueError as exc:
-            await self._error(user_id, str(exc))
+            self._error(user_id, str(exc))
             return
         self.emit_event(event, user_id, {"detail": detail})
-        await self.broadcast({"type": "event", "event": event, "user_id": user_id, "payload": {"message": detail}})
-        await self.broadcast_state()
+        self.broadcast({"type": "event", "event": event, "user_id": user_id, "payload": {"message": detail}})
+        self.broadcast_state()
 
-    async def activate_skill(self, user_id: int) -> None:
+    def activate_skill(self, user_id: int) -> None:
         if self.status != "active":
-            await self._error(user_id, "The match is not active")
+            self._error(user_id, "The match is not active")
             return
         opponent_id = self.opponent_id(user_id)
         if opponent_id is None:
-            await self._error(user_id, "No opponent")
+            self._error(user_id, "No opponent")
             return
         try:
             detail = activate_skill(self.players[user_id], self.players[opponent_id], self.skill_pool)
         except ValueError as exc:
-            await self._error(user_id, str(exc))
+            self._error(user_id, str(exc))
             return
         self.emit_event("skill.activated", user_id, {"detail": detail})
-        await self.broadcast(
+        self.broadcast(
             {"type": "event", "event": "skill.activated", "user_id": user_id, "payload": {"message": detail}}
         )
-        await self.broadcast_state()
+        self.broadcast_state()
 
-    async def finish(self, reason: str, winner_id: int | None = None) -> None:
+    def finish(self, reason: str, winner_id: int | None = None) -> None:
         if self.status == "finished":
             return
         if winner_id is None and reason == "rounds":
@@ -256,8 +267,8 @@ class LiveMatch:
                 extra = dict(self.rounds[-1])
                 extra["index"] = len(self.rounds)
                 self.rounds.append(extra)
-                await self.broadcast({"type": "event", "event": "sudden.death", "payload": {}})
-                await self.next_round()
+                self.broadcast({"type": "event", "event": "sudden.death", "payload": {}})
+                self.next_round()
                 return
             if ordered:
                 winner_id = ordered[0][0]
@@ -269,7 +280,7 @@ class LiveMatch:
         for task in self.disconnect_tasks.values():
             task.cancel()
         self.emit_event("match.completed", winner_id or 0, {"reason": reason})
-        await self.broadcast(
+        self.broadcast(
             {
                 "type": "match_end",
                 "payload": {
