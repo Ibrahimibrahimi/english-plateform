@@ -1,28 +1,32 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon, page_head %}
 {% block title %}SpellBattle | Play with a Friend{% endblock %}
 {% block page %}play-with-friend{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-5xl flex flex-col gap-6">
-  <div class="text-center">
-    <h1 class="text-3xl font-extrabold">Play with a Friend</h1>
-    <p class="opacity-70 mt-2">Challenge an online player, or create a private invite and share the key.</p>
-  </div>
-
-  <div class="grid gap-4 md:grid-cols-2">
-    <a href="/challenge/create" class="card bg-base-100 border border-base-300 hover:border-warning">
-      <div class="card-body"><h2 class="card-title">Create a private challenge</h2><p class="text-sm opacity-70">Choose letters and skills, then share the generated link.</p></div>
+<div class="page-shell flex flex-col gap-5">
+  {% call page_head("Play with a friend", "Challenge an online player, or create a private invite and share the key.", "Friend duel") %}
+  <a href="/players" class="btn btn-outline gap-2">{{ icon("users", "h-4 w-4") }}All players</a>
+  {% endcall %}
+  <div data-stagger class="grid gap-4 md:grid-cols-2">
+    <a href="/challenge/create" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-warning/60">
+      <span class="grid h-11 w-11 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("plus", "h-5 w-5") }}</span>
+      <h2 class="font-display text-xl font-bold">Create a private challenge</h2>
+      <p class="text-sm opacity-70">Choose letters and skills, then share the generated link.</p>
+      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-warning">Start setup {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
-    <a href="/challenge/join" class="card bg-base-100 border border-base-300 hover:border-warning">
-      <div class="card-body"><h2 class="card-title">Join with a challenge key</h2><p class="text-sm opacity-70">Enter the key a friend sent you.</p></div>
+    <a href="/challenge/join" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-primary/60">
+      <span class="grid h-11 w-11 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("key", "h-5 w-5") }}</span>
+      <h2 class="font-display text-xl font-bold">Join with a challenge key</h2>
+      <p class="text-sm opacity-70">Enter the key a friend sent you.</p>
+      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">Use a key {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
   </div>
-
-  <section class="card bg-base-100 border border-base-300">
-    <div class="card-body">
-      <h2 class="card-title">Online players</h2>
-      <div id="online-players" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <span class="loading loading-spinner loading-md"></span>
-      </div>
+  <section class="panel panel-pad fade-in">
+    <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("users", "h-5 w-5 text-success") }}Online players</h2>
+    <div id="online-players" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="skeleton h-36"></div>
+      <div class="skeleton h-36"></div>
+      <div class="skeleton h-36"></div>
     </div>
   </section>
 </div>

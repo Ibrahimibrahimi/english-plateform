@@ -1,21 +1,30 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon, page_head %}
 {% block title %}SpellBattle | Play{% endblock %}
 {% block page %}play{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-4xl">
-  <h1 class="text-3xl font-extrabold text-center mb-8">Choose how to play</h1>
-  <div class="grid gap-6 md:grid-cols-3">
-    <a href="/play-with-friend" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
-      <figure class="h-32 bg-warning/20 flex items-center justify-center text-5xl">👥</figure>
-      <div class="card-body"><h2 class="card-title">Play with a Friend</h2><p class="text-sm opacity-70">Challenge an online player or copy a private invite link.</p></div>
+<div class="page-shell">
+  {% call page_head("Choose how to play", "Private duels, friend invites, and admin tournaments all start here.", "Game modes") %}
+  <button data-open-howto class="btn btn-outline gap-2">{{ icon("play", "h-4 w-4") }}How to play</button>
+  {% endcall %}
+  <div data-stagger class="grid gap-4 md:grid-cols-3">
+    <a href="/play-with-friend" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-warning/60">
+      <span class="grid h-11 w-11 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("friends", "h-5 w-5") }}</span>
+      <h2 class="font-display text-xl font-bold">Play with a friend</h2>
+      <p class="text-sm opacity-70">Challenge an online player or copy a private invite link.</p>
+      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-warning">Open roster {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
-    <a href="/play-challenge" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
-      <figure class="h-32 bg-info/20 flex items-center justify-center text-5xl">🔑</figure>
-      <div class="card-body"><h2 class="card-title">Play Challenge</h2><p class="text-sm opacity-70">Create a private 1v1 with your own letters, or join by key.</p></div>
+    <a href="/play-challenge" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-primary/60">
+      <span class="grid h-11 w-11 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("key", "h-5 w-5") }}</span>
+      <h2 class="font-display text-xl font-bold">Play challenge</h2>
+      <p class="text-sm opacity-70">Create a private 1v1 with your own letters, or join by key.</p>
+      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">Set rules {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
-    <a href="/play-tournament" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
-      <figure class="h-32 bg-success/20 flex items-center justify-center text-5xl">🏆</figure>
-      <div class="card-body"><h2 class="card-title">Play Tournament</h2><p class="text-sm opacity-70">Find an admin tournament, inspect the rules and join with a key.</p></div>
+    <a href="/play-tournament" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-success/60">
+      <span class="grid h-11 w-11 place-items-center rounded-xl border border-success/40 bg-success/10 text-success">{{ icon("trophy", "h-5 w-5") }}</span>
+      <h2 class="font-display text-xl font-bold">Play tournament</h2>
+      <p class="text-sm opacity-70">Find an admin tournament, inspect the rules, and join with a key.</p>
+      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-success">Browse events {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
   </div>
 </div>

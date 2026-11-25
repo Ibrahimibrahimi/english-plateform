@@ -1,4 +1,4 @@
-import { runTransition, settle, slideIn } from "./motion.js";
+import { reveal, runTransition, settle, slideIn } from "./motion.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -50,6 +50,8 @@ document.querySelectorAll("[data-nav]").forEach((link) => {
   if (active) link.setAttribute("aria-current", "page");
   else link.removeAttribute("aria-current");
 });
+
+reveal("[data-stagger] > *");
 
 const drawer = $("menu-drawer");
 if (drawer) {
