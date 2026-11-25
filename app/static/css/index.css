@@ -522,9 +522,15 @@ h1, h2, h3, h4, .font-display {
 .arena-lane.on { opacity: 0.55; }
 #arena-units { position: absolute; inset: 0; pointer-events: none; }
 
-.tank { position: absolute; bottom: 2.2rem; width: clamp(5.5rem, 22%, 9rem); z-index: 2; }
-.tank-p1 { left: 0.75rem; --c: var(--fx-red); }
-.tank-p2 { right: 0.75rem; --c: var(--fx-blue); }
+.tank {
+  position: absolute;
+  bottom: 2.2rem;
+  width: clamp(5.5rem, 22%, 9rem);
+  z-index: 2;
+  --tank-glow: transparent;
+}
+.tank-p1 { left: 0.75rem; }
+.tank-p2 { right: 0.75rem; }
 
 .abar {
   height: 0.6rem;
@@ -540,40 +546,43 @@ h1, h2, h3, h4, .font-display {
 .abar-ar i { background: var(--sb-secondary); }
 .tank.is-low .abar-hp { animation: fx-blink 0.6s infinite alternate; }
 
-.tank-fig { position: relative; height: 4.2rem; transition: filter 0.2s; }
+.tank-fig {
+  position: relative;
+  height: 5.2rem;
+  filter: drop-shadow(0 0.5rem 0.75rem rgba(24, 34, 29, 0.18)) drop-shadow(0 0 0.45rem var(--tank-glow));
+  transition: filter 0.2s, rotate 0.6s, translate 0.6s;
+}
 .tank-p2 .tank-fig { transform: scaleX(-1); }
-.tank-fig span {
-  position: absolute;
-  border: 2px solid var(--c);
-  background: color-mix(in oklab, var(--c) 38%, var(--sb-surface));
+
+.tank-sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  user-select: none;
 }
 
-.hull { bottom: 0.7rem; left: 0; right: 0; height: 1.7rem; border-radius: 0.4rem; }
-.turret { bottom: 2.2rem; left: 28%; width: 42%; height: 1.2rem; border-radius: 0.7rem 0.7rem 0.2rem 0.2rem; }
-.barrel { bottom: 2.55rem; left: 66%; width: 38%; height: 0.45rem; border-radius: 0.2rem; }
-
-.tracks {
-  bottom: 0;
-  left: 6%;
-  right: 6%;
-  height: 1rem;
-  border: 0 !important;
-  border-radius: 0.6rem;
-  background: color-mix(in oklab, var(--sb-muted) 70%, transparent) !important;
+.tank-muzzle {
+  position: absolute;
+  top: 13%;
+  left: 85%;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
 }
 
 .tank-p1.is-fire { animation: fx-recoil-l 0.22s; }
 .tank-p2.is-fire { animation: fx-recoil-r 0.22s; }
 .tank.is-hit .tank-fig { animation: fx-shake 0.35s; }
-.tank.is-heal .tank-fig span { border-color: var(--sb-accent); }
-.tank.is-armor .tank-fig span { border-color: var(--sb-secondary); }
+.tank.is-heal { --tank-glow: color-mix(in oklab, var(--sb-accent) 45%, transparent); }
+.tank.is-armor { --tank-glow: color-mix(in oklab, var(--sb-secondary) 45%, transparent); }
 .tank.is-winner .tank-fig { animation: fx-bob 0.5s ease-in-out infinite alternate; }
 
 .tank.is-ko .tank-fig {
-  filter: grayscale(0.85);
+  filter: grayscale(0.85) drop-shadow(0 0.5rem 0.75rem rgba(24, 34, 29, 0.18));
   rotate: 6deg;
   translate: 0 0.35rem;
-  transition: all 0.6s;
 }
 
 .tank.is-ko::before {
@@ -780,6 +789,7 @@ h1, h2, h3, h4, .font-display {
   .arena { height: 14rem; }
   .arena-pts { font-size: 0.8rem; }
   .tank { bottom: 2rem; }
+  .tank-fig { height: 4.4rem; }
   .fx-float { bottom: 6rem; }
 }
 

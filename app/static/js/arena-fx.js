@@ -56,6 +56,15 @@ export function createArenaFx() {
     return t.offsetLeft + t.offsetWidth / 2;
   }
 
+  function muzzleX(side) {
+    const t = tank[side];
+    const muzzle = t?.querySelector(".tank-muzzle");
+    if (!muzzle) return t.offsetLeft + (side === "p1" ? t.offsetWidth : 0);
+    const stageRect = stage.getBoundingClientRect();
+    const rect = muzzle.getBoundingClientRect();
+    return rect.left - stageRect.left + rect.width / 2;
+  }
+
   function float(side, text, cls) {
     const el = document.createElement("span");
     el.className = `fx-float ${cls}`;
@@ -141,7 +150,7 @@ export function createArenaFx() {
   function march(from, label, kind, onArrive) {
     const to = other(from);
     const prof = PROFILE[kind];
-    const x0 = from === "p1" ? tank.p1.offsetLeft + tank.p1.offsetWidth - 20 : tank.p2.offsetLeft - 6;
+    const x0 = muzzleX(from);
     const x1 = from === "p1" ? tank.p2.offsetLeft - prof.w + 6 : tank.p1.offsetLeft + tank.p1.offsetWidth - 18;
 
     const el = document.createElement("div");
