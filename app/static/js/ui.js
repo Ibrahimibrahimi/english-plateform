@@ -19,20 +19,18 @@ if (year) year.textContent = new Date().getFullYear();
 
 const themeToggle = $("theme-toggle");
 if (themeToggle) {
-  themeToggle.checked = document.documentElement.dataset.theme !== "arena-day";
+  themeToggle.checked = document.documentElement.dataset.theme === "dark";
   try {
     const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") {
-      const migrated = saved === "dark" ? "arena" : "arena-day";
-      document.documentElement.dataset.theme = migrated;
-      localStorage.setItem("theme", migrated);
-      themeToggle.checked = saved === "dark";
-    }
+    const theme = saved === "dark" || saved === "arena" ? "dark" : "light";
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("theme", theme);
+    themeToggle.checked = theme === "dark";
   } catch (error) {
     toast("Theme preferences are unavailable", "warning");
   }
   themeToggle.addEventListener("change", () => {
-    const theme = themeToggle.checked ? "arena" : "arena-day";
+    const theme = themeToggle.checked ? "dark" : "light";
     runTransition(() => document.documentElement.setAttribute("data-theme", theme));
     try {
       localStorage.setItem("theme", theme);
