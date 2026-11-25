@@ -1,4 +1,4 @@
-import { request } from "./api.js";
+import { escapeHtml, request } from "./api.js";
 import { toast } from "./ui.js";
 
 const SKILLS = [
@@ -31,7 +31,7 @@ if (createForm) {
       });
       const result = document.getElementById("challenge-result");
       result.classList.remove("hidden");
-      result.innerHTML = `Challenge key: <code class="font-mono">${challenge.key}</code><br />Share link: <a class="link" href="${challenge.url}">${location.origin}${challenge.url}</a><br /><a class="btn btn-sm btn-warning mt-2" href="/playing/${challenge.match.id}">Go to match lobby</a>`;
+      result.innerHTML = `Challenge key: <code class="font-mono">${escapeHtml(challenge.key)}</code><br />Share link: <a class="link" href="${escapeHtml(challenge.url)}">${escapeHtml(location.origin + challenge.url)}</a><br /><a class="btn btn-sm btn-warning mt-2" href="/playing/${challenge.match.id}">Go to match lobby</a>`;
       toast("Challenge created", "success");
     } catch (error) {
       toast(error.message, "error");
@@ -69,9 +69,9 @@ if (searchForm) {
     const container = document.getElementById("challenge-details");
     try {
       const challenge = await request(`/api/challenges/${key}`);
-      container.innerHTML = `<div class="alert"><div><p><b>Status:</b> ${challenge.status}</p><p><b>Letters:</b> ${challenge.allowed_letters}</p><p><b>Skills:</b> ${challenge.skills || "All"}</p><a class="btn btn-warning btn-sm mt-3" href="/challenge/join?key=${challenge.key}">Join</a></div></div>`;
+      container.innerHTML = `<div class="alert"><div><p><b>Status:</b> ${escapeHtml(challenge.status)}</p><p><b>Letters:</b> ${escapeHtml(challenge.allowed_letters)}</p><p><b>Skills:</b> ${escapeHtml(challenge.skills || "All")}</p><a class="btn btn-warning btn-sm mt-3" href="/challenge/join?key=${encodeURIComponent(challenge.key)}">Join</a></div></div>`;
     } catch (error) {
-      container.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+      container.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
     }
   });
 }

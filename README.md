@@ -43,7 +43,9 @@ A player holds one special move at a time. It is drawn randomly on the server fr
 
 ### Match flow
 
-5 rounds of 60 seconds are played. A knockout wins immediately. After the final round the higher score wins; a tie triggers one sudden-death round. Disconnects allow a 30-second reconnect grace period before forfeiture. All scoring, timers, random draws and effects are decided by the server and broadcast over WebSocket.
+5 rounds of 60 seconds are played. A knockout wins immediately. After the final round the higher score wins; a tie triggers one sudden-death round. A match starts only after both players are connected, so joining a challenge or tournament match opens a waiting lobby. Disconnects allow a 30-second reconnect grace period before forfeiture. Reconnecting replaces any older browser socket for that player without disturbing the new connection. All scoring, timers, random draws and effects are decided by the server and broadcast over WebSocket.
+
+Finished matches stay available in memory for `MATCH_RETENTION_SECONDS` (10 minutes by default) so a reconnect can load the final state. Active matches do not survive a process restart: they are marked `finished` with reason `abandoned`, while waiting matches are recreated lazily when a player connects.
 
 ## Stack
 
@@ -86,7 +88,31 @@ python -m pip install -r requirements.txt
 python run.py
 ```
 
-Open http://127.0.0.1:8000. Set `SECRET_KEY` in the environment for a real deployment. The first admin is created from `ADMIN_EMAIL` and `ADMIN_PASSWORD` (defaults: `admin@spellbattle.local` / `admin123`).
+Open http://127.0.0.1:8000. The first admin is created from `ADMIN_EMAIL` and `ADMIN_PASSWORD` (defaults: `admin@spellbattle.local` / `admin123`).
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | local SQLite file | SQLAlchemy database URL |
+| `SECRET_KEY` | development value | Signs session cookies; always set this in production |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | local defaults | Bootstrap admin account |
+| `SESSION_COOKIE_SECURE` | off | Set to `1` when serving over HTTPS |
+| `ALLOWED_ORIGINS` | empty | Comma-separated extra WebSocket origins beyond the same origin |
+| `WS_MAX_MESSAGE_SIZE` | `4096` | Maximum WebSocket message size |
+| `MATCH_RETENTION_SECONDS` | `600` | How long finished live matches stay in memory |
+| `HOST` / `PORT` | `127.0.0.1` / `8000` | `run.py` bind address |
+
+## Production
+
+The live match registry and presence tracking are in-process, so run exactly **one** Gunicorn worker with multiple threads:
+
+```bash
+SECRET_KEY="replace-me" SESSION_COOKIE_SECURE=1 \
+  gunicorn -w 1 --threads 16 -b 0.0.0.0:8000 "app.main:app"
+```
+
+Use a reverse proxy that forwards WebSocket upgrades. If the public origin differs from the backend origin, include it in `ALLOWED_ORIGINS`.
 
 ## Checks
 
@@ -94,3 +120,5 @@ Open http://127.0.0.1:8000. Set `SECRET_KEY` in the environment for a real deplo
 pytest -q
 ruff check app tests
 ```
+
+The test suite includes an end-to-end WebSocket round trip against a temporary threaded server.

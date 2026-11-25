@@ -7,7 +7,7 @@ from app.db import SessionLocal
 from app.game.arena import arena
 from app.game.rules import new_player
 from app.game.words import normalize_letters
-from app.models import LetterSet, Match, MatchEvent, MatchParticipant, User
+from app.models import LetterSet, Match, MatchEvent, MatchParticipant, Round, User
 
 
 def new_key(prefix: str = "") -> str:
@@ -43,6 +43,47 @@ def record_event(match_id: int, event: str, user_id: int, data: dict) -> None:
         db.close()
 
 
+def mark_started(match_id: int) -> None:
+    db = SessionLocal()
+    try:
+        match = db.get(Match, match_id)
+        if match is None or match.status == "finished":
+            return
+        match.status = "active"
+        if match.started_at is None:
+            match.started_at = datetime.now(UTC)
+        db.commit()
+    finally:
+        db.close()
+
+
+def mark_round(match_id: int, round_index: int) -> None:
+    db = SessionLocal()
+    try:
+        match = db.get(Match, match_id)
+        if match is None or match.status == "finished":
+            return
+        match.round_index = round_index
+        existing = (
+            db.query(Round)
+            .filter(Round.match_id == match_id, Round.index == round_index)
+            .first()
+        )
+        if existing is None:
+            db.add(
+                Round(
+                    match_id=match_id,
+                    index=round_index,
+                    letters=match.allowed_letters,
+                    duration_seconds=config.ROUND_SECONDS,
+                    started_at=datetime.now(UTC),
+                )
+            )
+        db.commit()
+    finally:
+        db.close()
+
+
 def persist_result(match_id: int, reason: str, winner_id: int | None, players: dict, round_index: int) -> None:
     db = SessionLocal()
     try:
@@ -66,12 +107,13 @@ def persist_result(match_id: int, reason: str, winner_id: int | None, players: d
             participant.max_armor = state["max_armor"]
             participant.attack = state["attack"]
             participant.skill = state["skill"]
+            participant.status = "finished"
             user = db.get(User, participant.user_id)
-            if user is not None:
+            if user is not None and reason != "abandoned":
                 user.lifetime_learning_points += state["points"]
                 if winner_id == participant.user_id:
                     user.wins += 1
-                else:
+                elif winner_id is not None:
                     user.losses += 1
                 if match.tournament_id is not None:
                     user.tournaments_played += 1
@@ -94,14 +136,60 @@ def register_match(db, match: Match):
     }
     if existing is not None:
         for user_id, state in players.items():
-            if user_id not in existing.players:
-                existing.players[user_id] = state
+            existing.add_player(user_id, state)
         return existing
-    return arena.create(
+    if match.status == "finished":
+        return None
+    live = arena.create(
         match.id,
         players,
         build_rounds(match.allowed_letters),
         pool,
         on_finish=persist_result,
         on_event=record_event,
+        on_start=mark_started,
+        on_round=mark_round,
     )
+    for user_id, state in players.items():
+        live.add_player(user_id, state)
+    return live
+
+
+def abandon_match(db, match: Match) -> None:
+    if match.status == "finished":
+        return
+    match.status = "finished"
+    match.end_reason = "abandoned"
+    match.ended_at = datetime.now(UTC)
+    for participant in db.query(MatchParticipant).filter_by(match_id=match.id).all():
+        participant.status = "finished"
+
+
+def ensure_match(match_id: int):
+    live = arena.get(match_id)
+    if live is not None:
+        return live
+    db = SessionLocal()
+    try:
+        match = db.get(Match, match_id)
+        if match is None or match.status == "finished":
+            return None
+        if match.status == "active":
+            abandon_match(db, match)
+            db.commit()
+            return None
+        return register_match(db, match)
+    finally:
+        db.close()
+
+
+def reconcile_matches() -> None:
+    db = SessionLocal()
+    try:
+        active = db.query(Match).filter(Match.status == "active").all()
+        for match in active:
+            abandon_match(db, match)
+        if active:
+            db.commit()
+    finally:
+        db.close()

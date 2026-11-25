@@ -81,3 +81,82 @@ def test_accounts_challenges_tournaments_and_stats():
     leaderboard = player_one.get("/api/leaderboard").get_json()
     assert any(entry["username"] == one["username"] for entry in leaderboard)
     assert any(entry["username"] == two["username"] for entry in leaderboard)
+
+
+def test_profile_update_persists_and_validates_names():
+    client = app.test_client()
+    signup(client, "profile")
+    updated = client.patch("/api/me", json={"username": f"renamed{suffix}"})
+    assert updated.status_code == 200, updated.get_data(as_text=True)
+    assert updated.get_json()["username"] == f"renamed{suffix}"
+    assert client.get("/api/auth/me").get_json()["username"] == f"renamed{suffix}"
+
+    invalid = client.patch("/api/me", json={"username": "not allowed!"})
+    assert invalid.status_code == 400
+    duplicate = app.test_client()
+    signup(duplicate, "dupe")
+    conflict = duplicate.patch("/api/me", json={"username": f"renamed{suffix}"})
+    assert conflict.status_code == 409
+
+
+def test_privacy_and_match_snapshot_authorization():
+    owner_client = app.test_client()
+    opponent_client = app.test_client()
+    outsider_client = app.test_client()
+    signup(owner_client, "privacyone")
+    opponent = signup(opponent_client, "privacytwo")
+    signup(outsider_client, "privacythree")
+
+    challenge = owner_client.post("/api/challenges", json={"allowed_letters": "AEIOURSTLND"})
+    assert challenge.status_code == 200, challenge.get_data(as_text=True)
+    challenge_payload = challenge.get_json()
+    match_id = challenge_payload["match"]["id"]
+    joined = opponent_client.post(f"/api/challenges/{challenge_payload['key']}/join", json={})
+    assert joined.status_code == 200, joined.get_data(as_text=True)
+
+    online = owner_client.get("/api/players/online")
+    assert online.status_code == 200
+    entries = online.get_json()
+    assert any(entry["id"] == opponent["id"] for entry in entries)
+    assert all("email" not in entry for entry in entries)
+
+    assert app.test_client().get(f"/api/matches/{match_id}").status_code == 401
+    outsider_snapshot = outsider_client.get(f"/api/matches/{match_id}")
+    assert outsider_snapshot.status_code == 403
+    owner_snapshot = owner_client.get(f"/api/matches/{match_id}")
+    assert owner_snapshot.status_code == 200, owner_snapshot.get_data(as_text=True)
+    assert owner_snapshot.get_json()["state"]["status"] == "waiting"
+
+    forbidden_key = app.test_client().get(f"/api/challenges/{challenge_payload['key']}")
+    assert forbidden_key.status_code == 401
+
+
+def test_tournament_keys_are_private_and_join_by_key_works():
+    admin_client = app.test_client()
+    login = admin_client.post(
+        "/api/auth/login",
+        json={"email": "admin@spellbattle.local", "password": "admin123"},
+    )
+    assert login.status_code == 200, login.get_data(as_text=True)
+    tournament = admin_client.post(
+        "/api/tournaments",
+        json={"name": f"Private Cup {suffix}", "max_players": 8, "allowed_letters": "AEIOURSTLND"},
+    )
+    assert tournament.status_code == 200, tournament.get_data(as_text=True)
+    payload = tournament.get_json()
+
+    public_list = app.test_client().get("/api/tournaments").get_json()
+    assert all("key" not in item for item in public_list)
+    details = app.test_client().get(f"/api/tournaments/{payload['id']}").get_json()
+    assert "key" not in details
+
+    first_client = app.test_client()
+    second_client = app.test_client()
+    signup(first_client, "keyjoinone")
+    signup(second_client, "keyjointwo")
+    first = first_client.post("/api/tournaments/join", json={"key": payload["key"]})
+    assert first.status_code == 200, first.get_data(as_text=True)
+    assert first.get_json()["match"] is None
+    second = second_client.post("/api/tournaments/join", json={"key": payload["key"]})
+    assert second.status_code == 200, second.get_data(as_text=True)
+    assert second.get_json()["match"] is not None

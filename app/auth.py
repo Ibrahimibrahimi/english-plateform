@@ -1,8 +1,9 @@
 import hashlib
 import hmac
+import re
 import secrets
 
-from flask import abort, g, request
+from flask import abort, g, has_request_context, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from app import config
@@ -12,6 +13,14 @@ from app.models import User
 COOKIE_NAME = "sb_session"
 _serializer = URLSafeTimedSerializer(config.SECRET_KEY, salt="spellbattle-session")
 _ITERATIONS = 200_000
+USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def validate_username(raw: str) -> str:
+    username = str(raw).strip()
+    if not (3 <= len(username) <= 50) or not USERNAME_PATTERN.fullmatch(username):
+        raise ValueError("Username must be 3-50 letters, numbers, dots, dashes or underscores")
+    return username
 
 
 def hash_password(password: str) -> str:
@@ -51,6 +60,7 @@ def set_session(response, user_id: int) -> None:
         max_age=config.SESSION_MAX_AGE,
         httponly=True,
         samesite="lax",
+        secure=config.SESSION_COOKIE_SECURE,
     )
 
 
@@ -63,6 +73,9 @@ def current_user(req=None) -> User | None:
     user_id = read_token(req.cookies.get(COOKIE_NAME))
     if user_id is None:
         return None
+    db = getattr(g, "db", None) if has_request_context() else None
+    if db is not None:
+        return db.get(User, user_id)
     db = SessionLocal()
     try:
         return db.get(User, user_id)
@@ -94,6 +107,17 @@ def public_user(user: User) -> dict:
         "email": user.email,
         "role": user.role,
         "status": user.status,
+        "lifetime_learning_points": user.lifetime_learning_points,
+        "wins": user.wins,
+        "losses": user.losses,
+        "tournaments_played": user.tournaments_played,
+    }
+
+
+def public_profile(user: User) -> dict:
+    return {
+        "id": user.id,
+        "username": user.username,
         "lifetime_learning_points": user.lifetime_learning_points,
         "wins": user.wins,
         "losses": user.losses,

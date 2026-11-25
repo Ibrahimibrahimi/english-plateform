@@ -47,6 +47,15 @@ STEAL_MAX_POINTS = 30
 RECONNECT_GRACE_SECONDS = 30
 PRESENCE_TIMEOUT_SECONDS = 30
 CHALLENGE_TTL_HOURS = 24
+MATCH_RETENTION_SECONDS = int(os.getenv("MATCH_RETENTION_SECONDS", "600"))
+
+WS_MAX_MESSAGE_SIZE = int(os.getenv("WS_MAX_MESSAGE_SIZE", "4096"))
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "").lower() in {"1", "true", "yes"}
+ALLOWED_ORIGINS = tuple(
+    origin.strip().rstrip("/")
+    for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+)
 
 SKILLS = {
     "BLOCK_POINTS": "Block point generation (5s)",

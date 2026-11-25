@@ -2,13 +2,27 @@ from datetime import UTC, datetime
 
 from flask import Blueprint, abort, g, jsonify, request
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from app import config
-from app.auth import public_user, require_admin, require_user
+from app.auth import (
+    public_profile,
+    public_user,
+    require_admin,
+    require_user,
+    validate_username,
+)
+from app.db import begin_immediate
 from app.game.arena import arena
 from app.game.presence import online_ids, touch
 from app.game.rules import score_word
-from app.game.service import letters_for, new_key, register_match, skill_pool
+from app.game.service import (
+    ensure_match,
+    letters_for,
+    new_key,
+    register_match,
+    skill_pool,
+)
 from app.game.words import is_valid_word
 from app.models import (
     Challenge,
@@ -23,13 +37,13 @@ router = Blueprint("api", __name__, url_prefix="/api")
 
 
 def body():
-    return request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    return payload if isinstance(payload, dict) else {}
 
 
 def _match_info(match: Match) -> dict:
     return {
         "id": match.id,
-        "key": match.key,
         "mode": match.mode,
         "status": match.status,
         "tournament_id": match.tournament_id,
@@ -66,9 +80,10 @@ def update_me():
     db = g.db
     user = require_user()
     payload = body()
-    username = str(payload.get("username", "")).strip()
-    if not (3 <= len(username) <= 50):
-        abort(400, description="Username must be 3-50 characters")
+    try:
+        username = validate_username(payload.get("username", ""))
+    except ValueError as exc:
+        abort(400, description=str(exc))
     existing = db.query(User).filter(User.username == username, User.id != user.id).first()
     if existing:
         abort(409, description="Username already taken")
@@ -90,7 +105,7 @@ def online_players():
     )
     return jsonify([
         {
-            **public_user(player),
+            **public_profile(player),
             "online": True,
             "points": player.lifetime_learning_points,
         }
@@ -105,11 +120,22 @@ def create_challenge():
     touch(user.id)
     payload = body()
     letters = letters_for(db, str(payload.get("allowed_letters", "all")))
-    opponent_id = payload.get("opponent_id")
+    opponent_id = None
+    raw_opponent = payload.get("opponent_id")
+    if raw_opponent is not None:
+        try:
+            opponent_id = int(raw_opponent)
+        except (TypeError, ValueError):
+            abort(400, description="Invalid opponent")
+        if opponent_id == user.id:
+            abort(400, description="You cannot challenge yourself")
+        opponent = db.get(User, opponent_id)
+        if opponent is None or opponent.status != "active":
+            abort(404, description="Opponent not found")
     challenge = Challenge(
         key=new_key("C"),
         creator_id=user.id,
-        opponent_id=int(opponent_id) if opponent_id is not None else None,
+        opponent_id=opponent_id,
         allowed_letters=letters,
         skills=",".join(skill_pool(str(payload.get("skills", "")))),
     )
@@ -138,7 +164,8 @@ def create_challenge():
 @router.get("/challenges/<string:key>")
 def get_challenge(key: str):
     db = g.db
-    challenge = db.query(Challenge).filter(Challenge.key == key).first()
+    require_user()
+    challenge = db.query(Challenge).filter(Challenge.key == key.strip().upper()).first()
     if challenge is None:
         abort(404, description="Challenge not found")
     return jsonify({
@@ -156,8 +183,9 @@ def get_challenge(key: str):
 @router.post("/challenges/<string:key>/join")
 def join_challenge(key: str):
     db = g.db
+    begin_immediate(db)
     user = require_user()
-    challenge = db.query(Challenge).filter(Challenge.key == key).first()
+    challenge = db.query(Challenge).filter(Challenge.key == key.strip().upper()).first()
     if challenge is None:
         abort(404, description="Challenge not found")
     if challenge.status != "created":
@@ -173,11 +201,22 @@ def join_challenge(key: str):
         abort(403, description="This challenge is for another player")
 
     match = db.get(Match, challenge.match_id)
-    if match is None or any(p.user_id == user.id for p in db.query(MatchParticipant).filter_by(match_id=match.id).all()):
+    if match is None:
+        abort(409, description="Challenge has no match")
+    if match.status != "waiting":
+        abort(409, description="Challenge match has already started")
+    participants = db.query(MatchParticipant).filter_by(match_id=match.id).all()
+    if any(participant.user_id == user.id for participant in participants):
         abort(409, description="Already joined")
+    if len(participants) >= 2:
+        abort(409, description="Challenge is full")
     db.add(MatchParticipant(match_id=match.id, user_id=user.id))
     challenge.status = "joined"
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        abort(409, description="Already joined")
     register_match(db, match)
     return jsonify(_match_info(match))
 
@@ -195,7 +234,6 @@ def list_tournaments():
             "id": tournament.id,
             "name": tournament.name,
             "description": tournament.description,
-            "key": tournament.key,
             "status": tournament.status,
             "max_players": tournament.max_players,
             "players": db.query(func.count(TournamentParticipant.id))
@@ -214,17 +252,23 @@ def create_tournament():
     admin = require_admin()
     payload = body()
     name = str(payload.get("name", "")).strip()
-    if len(name) < 3:
-        abort(400, description="Tournament name must be at least 3 characters")
+    if not (3 <= len(name) <= 100):
+        abort(400, description="Tournament name must be 3-100 characters")
     if db.query(Tournament).filter(Tournament.name == name).first():
         abort(409, description="Tournament name already exists")
-    max_players = int(payload.get("max_players", 16))
+    try:
+        max_players = int(payload.get("max_players", 16))
+    except (TypeError, ValueError):
+        abort(400, description="max_players must be between 2 and 128")
     if max_players < 2 or max_players > 128:
         abort(400, description="max_players must be between 2 and 128")
+    description = str(payload.get("description", "")).strip()
+    if len(description) > 300:
+        abort(400, description="Description must be at most 300 characters")
     letters = letters_for(db, str(payload.get("allowed_letters", "all")))
     tournament = Tournament(
         name=name,
-        description=str(payload.get("description", "")).strip(),
+        description=description,
         key=new_key("T"),
         max_players=max_players,
         allowed_letters=letters,
@@ -271,74 +315,104 @@ def tournament_details(tournament_id: int):
     })
 
 
-@router.post("/tournaments/<int:tournament_id>/join")
-def join_tournament(tournament_id: int):
-    db = g.db
-    user = require_user()
-    payload = body()
-    key = str(payload.get("key", "")).strip().upper()
-    tournament = db.get(Tournament, tournament_id)
-    if tournament is None or tournament.key != key:
-        abort(404, description="Invalid tournament key")
+def _join_tournament(db, tournament: Tournament, user: User) -> dict:
     if tournament.status != "open":
         abort(409, description="Tournament is not open")
     existing = (
         db.query(TournamentParticipant)
-        .filter_by(tournament_id=tournament_id, user_id=user.id)
+        .filter_by(tournament_id=tournament.id, user_id=user.id)
         .first()
     )
     if existing:
         abort(409, description="Already joined")
     count = (
         db.query(func.count(TournamentParticipant.id))
-        .filter(TournamentParticipant.tournament_id == tournament_id)
+        .filter(TournamentParticipant.tournament_id == tournament.id)
         .scalar()
     )
     if count >= tournament.max_players:
         abort(409, description="Tournament is full")
 
-    db.add(TournamentParticipant(tournament_id=tournament_id, user_id=user.id, status="waiting"))
+    participant = TournamentParticipant(
+        tournament_id=tournament.id, user_id=user.id, status="waiting"
+    )
+    db.add(participant)
     db.flush()
     opponent = (
         db.query(TournamentParticipant)
         .filter(
-            TournamentParticipant.tournament_id == tournament_id,
+            TournamentParticipant.tournament_id == tournament.id,
             TournamentParticipant.user_id != user.id,
             TournamentParticipant.status == "waiting",
         )
+        .order_by(TournamentParticipant.id)
         .first()
     )
-    result = {"tournament_id": tournament_id, "match": None}
-    if opponent is not None:
-        opponent.status = "matched"
-        participant = db.query(TournamentParticipant).filter_by(
-            tournament_id=tournament_id, user_id=user.id
-        ).first()
-        participant.status = "matched"
-        match = _create_match(
-            db,
-            [opponent.user_id, user.id],
-            tournament.allowed_letters,
-            tournament.skills,
-            "tournament",
-            tournament_id=tournament_id,
-        )
-        db.commit()
-        register_match(db, match)
-        result["match"] = _match_info(match)
-    else:
-        db.commit()
-    return jsonify(result)
+    result = {"tournament_id": tournament.id, "match": None}
+    try:
+        if opponent is not None:
+            opponent.status = "matched"
+            participant.status = "matched"
+            match = _create_match(
+                db,
+                [opponent.user_id, user.id],
+                tournament.allowed_letters,
+                tournament.skills,
+                "tournament",
+                tournament_id=tournament.id,
+            )
+            db.commit()
+            register_match(db, match)
+            result["match"] = _match_info(match)
+        else:
+            db.commit()
+    except IntegrityError:
+        db.rollback()
+        abort(409, description="Already joined")
+    return result
+
+
+@router.post("/tournaments/join")
+def join_tournament_by_key():
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    payload = body()
+    key = str(payload.get("key", "")).strip().upper()
+    tournament = db.query(Tournament).filter(Tournament.key == key).first()
+    if tournament is None:
+        abort(404, description="Invalid tournament key")
+    return jsonify(_join_tournament(db, tournament, user))
+
+
+@router.post("/tournaments/<int:tournament_id>/join")
+def join_tournament(tournament_id: int):
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    payload = body()
+    key = str(payload.get("key", "")).strip().upper()
+    tournament = db.get(Tournament, tournament_id)
+    if tournament is None or tournament.key != key:
+        abort(404, description="Invalid tournament key")
+    return jsonify(_join_tournament(db, tournament, user))
 
 
 @router.get("/matches/<int:match_id>")
 def match_snapshot(match_id: int):
     db = g.db
-    require_user()
+    user = require_user()
     match = db.get(Match, match_id)
     if match is None:
         abort(404, description="Match not found")
-    live = arena.get(match_id)
+    participant = (
+        db.query(MatchParticipant)
+        .filter_by(match_id=match_id, user_id=user.id)
+        .first()
+    )
+    if participant is None and user.role != "admin":
+        abort(403, description="You are not in this match")
+    live = arena.get(match_id) or ensure_match(match_id)
     state = live.public_state() if live is not None else None
     return jsonify({"match": _match_info(match), "state": state})
 
@@ -347,7 +421,12 @@ def match_snapshot(match_id: int):
 def statistics():
     db = g.db
     user = require_user()
-    matches = db.query(MatchParticipant).filter(MatchParticipant.user_id == user.id).all()
+    matches = (
+        db.query(MatchParticipant)
+        .join(Match, Match.id == MatchParticipant.match_id)
+        .filter(MatchParticipant.user_id == user.id, Match.status == "finished")
+        .all()
+    )
     played = len(matches)
     points = sum(entry.points for entry in matches)
     return jsonify({
@@ -369,7 +448,7 @@ def history():
     rows = (
         db.query(Match, MatchParticipant)
         .join(MatchParticipant, Match.id == MatchParticipant.match_id)
-        .filter(MatchParticipant.user_id == user.id)
+        .filter(MatchParticipant.user_id == user.id, Match.status == "finished")
         .order_by(Match.id.desc())
         .all()
     )

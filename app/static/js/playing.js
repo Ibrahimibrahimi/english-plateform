@@ -4,15 +4,35 @@ import { toast } from "./ui.js";
 const meta = document.getElementById("match-meta");
 if (meta) {
   const matchId = meta.dataset.matchId;
+  const wordInput = document.getElementById("word-input");
+  const connection = document.getElementById("connection");
+  const roundLabel = document.getElementById("round-label");
+  const timer = document.getElementById("timer");
+  const result = document.getElementById("result");
+  const controls = [
+    document.getElementById("answer-form")?.querySelector("button"),
+    wordInput,
+    document.getElementById("skill-btn"),
+    document.getElementById("health-btn"),
+    document.getElementById("armor-btn"),
+    document.getElementById("regen-skill-btn"),
+  ].filter(Boolean);
+
   let myId = null;
+  let socket = null;
+  let ended = false;
+  let retry = 0;
+  let reconnectTimer = null;
+
   try {
     myId = (await request("/api/auth/me")).id;
   } catch (error) {
     toast("Log in to play this match", "error");
   }
-  const socket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/match/${matchId}`);
 
-  const wordInput = document.getElementById("word-input");
+  const setControlsEnabled = (enabled) => {
+    for (const control of controls) control.disabled = !enabled;
+  };
 
   const addLog = (text) => {
     const item = document.createElement("li");
@@ -45,59 +65,127 @@ if (meta) {
 
   const renderState = (payload) => {
     const players = Object.entries(payload.players).map(([id, player]) => ({ ...player, id: Number(id) }));
-    if (!myId && players.length) myId = players[0].id;
     const mine = players.find((player) => player.id === myId) || players[0];
-    const opponent = players.find((player) => player.id !== mine.id) || players[1];
-    if (!ids.length && players.length === 2) {
-      ids.push(mine.id, opponent.id);
-    }
-    if (mine) renderPlayer(mine, "p1", true);
+    const opponent = players.find((player) => player.id !== mine?.id);
+    if (mine) renderPlayer(mine, "p1", mine.id === myId);
     if (opponent) renderPlayer(opponent, "p2", false);
-    document.getElementById("round-label").textContent = `Round ${Math.min(payload.round_index + 1, payload.total_rounds)} / ${payload.total_rounds}`;
-    document.getElementById("timer").textContent = `${payload.seconds_left}s`;
+
+    const round = Math.min(payload.round_index + 1, payload.total_rounds);
+    if (payload.status === "waiting") {
+      connection.textContent = "Waiting for opponent";
+      roundLabel.textContent = "Lobby";
+      timer.textContent = "--";
+      setControlsEnabled(false);
+      return;
+    }
+    if (payload.status === "finished") {
+      setControlsEnabled(false);
+      connection.textContent = "Match finished";
+      timer.textContent = "0s";
+      if (result.classList.contains("hidden")) {
+        result.classList.remove("hidden");
+        if (payload.winner_id === null) {
+          result.textContent = "Match ended in a draw.";
+        } else if (payload.winner_id === myId) {
+          result.textContent = "Victory! Your tank wins.";
+        } else {
+          result.textContent = "Defeat. Better spelling next round.";
+        }
+      }
+      return;
+    }
+    setControlsEnabled(true);
+    connection.textContent = "Connected";
+    roundLabel.textContent = `Round ${round} / ${payload.total_rounds}`;
+    timer.textContent = `${payload.seconds_left}s`;
     renderLetters(payload.letters);
   };
 
-  socket.addEventListener("open", () => {
-    document.getElementById("connection").textContent = "Connected";
-  });
+  const connect = () => {
+    const scheme = location.protocol === "https:" ? "wss" : "ws";
+    socket = new WebSocket(`${scheme}://${location.host}/ws/match/${matchId}`);
 
-  socket.addEventListener("close", () => {
-    document.getElementById("connection").textContent = "Disconnected";
-  });
+    socket.addEventListener("open", () => {
+      retry = 0;
+      connection.textContent = "Connected";
+    });
 
-  socket.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data);
-    if (message.type === "state") return renderState(message.payload);
-    if (message.type === "round_start") {
-      addLog(`Round ${message.payload.index + 1} started (${message.payload.letters})`);
-      return renderLetters(message.payload.letters);
+    socket.addEventListener("close", (event) => {
+      if (ended) return;
+      if (event.code === 4401) {
+        connection.textContent = "Login required";
+        toast("Log in to play this match", "error");
+        return;
+      }
+      if (event.code === 4000) {
+        connection.textContent = "Opened in another window";
+        toast("This match is now open in another window", "warning");
+        return;
+      }
+      if ([4403, 4404].includes(event.code)) {
+        connection.textContent = "Cannot join match";
+        return;
+      }
+      connection.textContent = "Reconnecting...";
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connect, Math.min(8000, 1000 * 2 ** retry));
+      retry += 1;
+    });
+
+    socket.addEventListener("message", (event) => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        return;
+      }
+      if (message.type === "state") return renderState(message.payload);
+      if (message.type === "round_start") {
+        addLog(`Round ${message.payload.index + 1} started (${message.payload.letters})`);
+        return renderLetters(message.payload.letters);
+      }
+      if (message.type === "word") {
+        addLog(`${message.payload.word} (+${message.payload.points})`);
+        return;
+      }
+      if (message.type === "event") {
+        addLog(message.payload?.message || message.event || "Event");
+        return;
+      }
+      if (message.type === "error") return toast(message.message, "error");
+      if (message.type === "match_end") {
+        ended = true;
+        setControlsEnabled(false);
+        clearTimeout(reconnectTimer);
+        result.classList.remove("hidden");
+        if (message.payload.winner_id === null) {
+          result.textContent = "Match ended in a draw.";
+        } else if (message.payload.winner_id === myId) {
+          result.textContent = "Victory! Your tank wins.";
+        } else {
+          result.textContent = "Defeat. Better spelling next round.";
+        }
+        addLog(`Match ended: ${message.payload.reason}`);
+      }
+    });
+  };
+
+  const send = (type, payload = {}) => {
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type, ...payload }));
+    } else {
+      toast("Not connected to the match", "warning");
     }
-    if (message.type === "word") {
-      addLog(`${message.payload.word} (+${message.payload.points})`);
-      return;
-    }
-    if (message.type === "event") {
-      addLog(message.payload?.message || message.event || "Event");
-      return;
-    }
-    if (message.type === "error") return toast(message.message, "error");
-    if (message.type === "match_end") {
-      const won = message.payload.winner_id === myId;
-      document.getElementById("result").classList.remove("hidden");
-      document.getElementById("result").textContent = won ? "Victory! Your tank wins." : "Defeat. Better spelling next round.";
-      addLog(`Match ended: ${message.payload.reason}`);
-    }
-  });
+  };
 
   document.getElementById("answer-form").addEventListener("submit", (event) => {
     event.preventDefault();
-    socket.send(JSON.stringify({ type: "answer.submit", word: wordInput.value }));
+    if (!wordInput.value.trim()) return;
+    send("answer.submit", { word: wordInput.value });
     wordInput.value = "";
     wordInput.focus();
   });
 
-  const send = (type, payload = {}) => socket.send(JSON.stringify({ type, ...payload }));
   document.getElementById("skill-btn").addEventListener("click", () => send("skill.activate"));
   document.getElementById("health-btn").addEventListener("click", () => send("resource.regenerate", { resource: "health" }));
   document.getElementById("armor-btn").addEventListener("click", () => send("resource.regenerate", { resource: "armor" }));
@@ -110,4 +198,7 @@ if (meta) {
     if (event.ctrlKey && event.key === "2") { event.preventDefault(); send("resource.regenerate", { resource: "armor" }); }
     if (event.ctrlKey && event.key === "3") { event.preventDefault(); send("skill.regenerate"); }
   });
+
+  setControlsEnabled(false);
+  connect();
 }

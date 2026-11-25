@@ -3,5 +3,6 @@ flask-sock>=0.7
 simple-websocket>=1.1
 sqlalchemy>=2.0
 itsdangerous>=2.2
+gunicorn>=23.0
 pytest>=8.3
 ruff>=0.7

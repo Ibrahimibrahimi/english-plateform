@@ -6,6 +6,7 @@ from app.auth import (
     public_user,
     require_user,
     set_session,
+    validate_username,
     verify_password,
 )
 from app.game.presence import touch
@@ -17,12 +18,14 @@ router = Blueprint("auth", __name__, url_prefix="/api/auth")
 @router.post("/signup")
 def signup():
     db = g.db
-    payload = request.get_json(force=True) or {}
-    username = str(payload.get("username", "")).strip()
+    payload = request.get_json(silent=True)
+    payload = payload if isinstance(payload, dict) else {}
+    try:
+        username = validate_username(payload.get("username", ""))
+    except ValueError as exc:
+        abort(400, description=str(exc))
     email = str(payload.get("email", "")).strip().lower()
     password = str(payload.get("password", ""))
-    if not (3 <= len(username) <= 50):
-        abort(400, description="Username must be 3-50 characters")
     if "@" not in email or not (5 <= len(email) <= 120):
         abort(400, description="Invalid email")
     if not (8 <= len(password) <= 128):
@@ -43,7 +46,8 @@ def signup():
 @router.post("/login")
 def login():
     db = g.db
-    payload = request.get_json(force=True) or {}
+    payload = request.get_json(silent=True)
+    payload = payload if isinstance(payload, dict) else {}
     email = str(payload.get("email", "")).strip().lower()
     password = str(payload.get("password", ""))
     user = db.query(User).filter(User.email == email).first()

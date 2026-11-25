@@ -1,4 +1,4 @@
-import { request } from "./api.js";
+import { escapeHtml, request } from "./api.js";
 import { toast } from "./ui.js";
 
 const container = document.getElementById("online-players");
@@ -8,7 +8,7 @@ if (container) {
     container.innerHTML = players.length ? players.map((player) => `
       <div class="card bg-base-100 border border-base-300">
         <div class="card-body p-4">
-          <div class="flex items-center justify-between"><h3 class="font-bold">${player.username}</h3><span class="badge badge-success badge-sm">Online</span></div>
+          <div class="flex items-center justify-between"><h3 class="font-bold">${escapeHtml(player.username)}</h3><span class="badge badge-success badge-sm">Online</span></div>
           <p class="text-sm opacity-70">Learning points: ${player.lifetime_learning_points} · Wins: ${player.wins}</p>
           <button class="btn btn-warning btn-sm mt-2 challenge-player" data-id="${player.id}">Challenge</button>
         </div>
@@ -29,6 +29,6 @@ if (container) {
       });
     });
   } catch (error) {
-    container.innerHTML = `<div class="alert alert-error">Log in to see online players: ${error.message}</div>`;
+    container.innerHTML = `<div class="alert alert-error">Log in to see online players: ${escapeHtml(error.message)}</div>`;
   }
 }
