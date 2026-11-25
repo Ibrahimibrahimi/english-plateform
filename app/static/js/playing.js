@@ -1,5 +1,6 @@
 import { request } from "./api.js";
 import { toast } from "./ui.js";
+import { settle } from "./motion.js";
 import { createArenaFx } from "./arena-fx.js";
 
 const meta = document.getElementById("match-meta");
@@ -10,6 +11,19 @@ if (meta) {
   const roundLabel = document.getElementById("round-label");
   const timer = document.getElementById("timer");
   const result = document.getElementById("result");
+  const resultKicker = document.getElementById("result-kicker");
+  const resultTitle = document.getElementById("result-title");
+  const resultMessage = document.getElementById("result-message");
+  const resultScore = document.getElementById("result-score");
+  const resultPrimary = document.getElementById("result-primary");
+  const resultPrimaryLabel = document.getElementById("result-primary-label");
+  const resultTournament = document.getElementById("result-tournament");
+  const connectionBanner = document.getElementById("connection-banner");
+  const connectionTitle = document.getElementById("connection-title");
+  const connectionDetail = document.getElementById("connection-detail");
+  const connectionRetry = document.getElementById("connection-retry");
+  const connectionLogin = document.getElementById("connection-login");
+  const connectionBack = document.getElementById("connection-back");
   const controls = [
     document.getElementById("answer-form")?.querySelector("button"),
     wordInput,
@@ -20,13 +34,14 @@ if (meta) {
   ].filter(Boolean);
 
   const fx = createArenaFx();
-  const sideById = {}; // user id -> "p1" (me) | "p2" (opponent)
+  const sideById = {};
   let myId = null;
   let socket = null;
   let ended = false;
   let retry = 0;
   let reconnectTimer = null;
   let isChallenge = false;
+  let tournamentId = null;
   let finishedAtLoad = false;
   let rematchShown = false;
   let rematchRetries = 0;
@@ -45,13 +60,63 @@ if (meta) {
   try {
     const snapshot = await request(`/api/matches/${matchId}`);
     isChallenge = snapshot.match.mode === "challenge";
+    tournamentId = snapshot.match.tournament_id;
     finishedAtLoad = snapshot.match.status === "finished";
   } catch (error) {
     toast(error.message, "error");
   }
 
+  const setConnectionBadge = (text, variant = "badge-ghost") => {
+    if (!connection) return;
+    connection.textContent = text;
+    connection.className = `badge ${variant}`;
+  };
+
   const setControlsEnabled = (enabled) => {
     for (const control of controls) control.disabled = !enabled;
+  };
+
+  const showConnection = ({ title, detail, canRetry = false, needLogin = false, canGoBack = false }) => {
+    if (!connectionBanner) return;
+    connectionTitle.textContent = title;
+    connectionDetail.textContent = detail;
+    connectionRetry?.classList.toggle("hidden", !canRetry);
+    connectionLogin?.classList.toggle("hidden", !needLogin);
+    connectionBack?.classList.toggle("hidden", !canGoBack);
+    connectionBanner.classList.remove("hidden");
+  };
+
+  const hideConnection = () => connectionBanner?.classList.add("hidden");
+
+  const renderResult = (payload) => {
+    if (!result) return;
+    const players = Object.entries(payload.players || {}).map(([id, player]) => ({ ...player, id: Number(id) }));
+    const mine = players.find((player) => player.id === myId);
+    const opponent = players.find((player) => player.id !== myId);
+    const draw = payload.winner_id == null;
+    const won = payload.winner_id === myId;
+    result.className = `result-card ${draw ? "result-draw" : won ? "result-win" : "result-loss"}`;
+    resultKicker.textContent = draw ? "Battle complete" : won ? "Arena secured" : "Battle complete";
+    resultTitle.textContent = draw ? "Draw" : won ? "Victory" : "Defeat";
+    resultMessage.textContent = draw
+      ? "Both tanks still stand. The arena calls it a draw."
+      : won
+        ? "Your tank is the last one standing."
+        : "The rival tank held the line. Try a longer word chain next round.";
+    resultScore.textContent = mine && opponent ? `${mine.points} - ${opponent.points} points` : "";
+    if (isChallenge) {
+      resultPrimary.href = "/challenge/list";
+      if (resultPrimaryLabel) resultPrimaryLabel.textContent = "New challenge";
+    } else if (tournamentId) {
+      resultPrimary.href = "/play-tournament";
+      if (resultPrimaryLabel) resultPrimaryLabel.textContent = "Play tournament";
+    } else {
+      resultPrimary.href = "/play";
+      if (resultPrimaryLabel) resultPrimaryLabel.textContent = "Play again";
+    }
+    resultTournament?.classList.toggle("hidden", !tournamentId);
+    if (tournamentId && resultTournament) resultTournament.href = `/tournament/${tournamentId}`;
+    settle(result);
   };
 
   const hideRematchActions = () => {
@@ -136,6 +201,13 @@ if (meta) {
     }
   });
 
+  connectionRetry?.addEventListener("click", () => {
+    if (socket && socket.readyState !== WebSocket.CLOSED) return;
+    clearTimeout(reconnectTimer);
+    hideConnection();
+    connect();
+  });
+
   if (finishedAtLoad) showRematch();
 
   const addLog = (text) => {
@@ -164,7 +236,7 @@ if (meta) {
     document.getElementById(`armor-bar-${side}`).style.width = `${(player.armor / Math.max(1, player.max_armor)) * 100}%`;
     document.getElementById(`attack-${side}`).textContent = player.attack;
     document.getElementById(`skill-${side}`).textContent = player.skill_label
-      ? `${player.skill_icon || "✨"} ${player.skill_label}`
+      ? `${player.skill_icon || "•"} ${player.skill_label}`
       : "-";
     document.getElementById(`status-${side}`).textContent = player.connected ? (player.blocked ? "Blocked" : "") : "Disconnected";
     fx.sync(side, player);
@@ -179,7 +251,7 @@ if (meta) {
 
     const round = Math.min(payload.round_index + 1, payload.total_rounds);
     if (payload.status === "waiting") {
-      connection.textContent = "Waiting for opponent";
+      setConnectionBadge("Waiting for opponent", "badge-warning");
       roundLabel.textContent = "Lobby";
       timer.textContent = "--";
       setControlsEnabled(false);
@@ -188,23 +260,16 @@ if (meta) {
     if (payload.status === "finished") {
       setControlsEnabled(false);
       fx.end(payload.winner_id == null ? null : sideById[payload.winner_id]);
-      connection.textContent = "Match finished";
+      setConnectionBadge("Match finished", "badge-success");
       timer.textContent = "0s";
-      if (result.classList.contains("hidden")) {
-        result.classList.remove("hidden");
-        if (payload.winner_id === null) {
-          result.textContent = "Match ended in a draw.";
-        } else if (payload.winner_id === myId) {
-          result.textContent = "Victory! Your tank wins.";
-        } else {
-          result.textContent = "Defeat. Better spelling next round.";
-        }
-      }
+      hideConnection();
+      renderResult(payload);
       showRematch();
       return;
     }
     setControlsEnabled(true);
-    connection.textContent = "Connected";
+    setConnectionBadge("Connected", "badge-success");
+    hideConnection();
     roundLabel.textContent = `Round ${round} / ${payload.total_rounds}`;
     timer.textContent = `${payload.seconds_left}s`;
     renderLetters(payload.letters);
@@ -216,28 +281,50 @@ if (meta) {
 
     socket.addEventListener("open", () => {
       retry = 0;
-      connection.textContent = "Connected";
+      setConnectionBadge("Connected", "badge-success");
+      hideConnection();
     });
 
     socket.addEventListener("close", (event) => {
       if (ended) return;
+      setControlsEnabled(false);
       if (event.code === 4401) {
-        connection.textContent = "Login required";
+        setConnectionBadge("Login required", "badge-warning");
+        showConnection({
+          title: "Login required",
+          detail: "Sign in to join this arena and keep your progress.",
+          needLogin: true,
+        });
         toast("Log in to play this match", "error");
         return;
       }
       if (event.code === 4000) {
-        connection.textContent = "Opened in another window";
-        toast("This match is now open in another window", "warning");
+        setConnectionBadge("Elsewhere", "badge-warning");
+        showConnection({
+          title: "Opened in another window",
+          detail: "This match is now active in a different window.",
+          canGoBack: true,
+        });
         return;
       }
       if ([4403, 4404].includes(event.code)) {
-        connection.textContent = "Cannot join match";
+        setConnectionBadge("Unavailable", "badge-error");
+        showConnection({
+          title: "Cannot join match",
+          detail: "This arena is no longer available to join.",
+          canGoBack: true,
+        });
         return;
       }
-      connection.textContent = "Reconnecting...";
+      const delay = Math.min(8000, 1000 * 2 ** retry);
+      setConnectionBadge("Reconnecting", "badge-warning");
+      showConnection({
+        title: "Connection lost",
+        detail: `Trying again in ${Math.ceil(delay / 1000)}s. Your controls are paused until the arena reconnects.`,
+        canRetry: true,
+      });
       clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(connect, Math.min(8000, 1000 * 2 ** retry));
+      reconnectTimer = setTimeout(connect, delay);
       retry += 1;
     });
 
@@ -256,13 +343,11 @@ if (meta) {
       }
       if (message.type === "word") {
         addLog(`${message.payload.word} (+${message.payload.points})`);
-        // The server only deals damage when the word scored, so only then does a soldier march.
         if (message.payload.points > 0) fx.attack(sideById[message.payload.user_id], message.payload.word);
         return;
       }
       if (message.type === "event") {
         addLog(message.payload?.message || message.event || "Event");
-        // The server sends each skill/regen event twice; only the copy with a message is animated.
         fx.event(message.event, sideById[message.user_id], message.payload?.message);
         if (message.event === "sudden.death") fx.banner("Sudden death");
         return;
@@ -272,22 +357,11 @@ if (meta) {
         ended = true;
         setControlsEnabled(false);
         clearTimeout(reconnectTimer);
-        // Final numbers come with the closing message: draw both cards and the arena from it.
         for (const [id, player] of Object.entries(message.payload.players || {})) {
           if (sideById[id]) renderPlayer(player, sideById[id], Number(id) === myId);
         }
         fx.end(message.payload.winner_id == null ? null : sideById[message.payload.winner_id]);
-        // The result box waits until the last soldier has landed.
-        fx.whenIdle(() => {
-          result.classList.remove("hidden");
-          if (message.payload.winner_id === null) {
-            result.textContent = "Match ended in a draw.";
-          } else if (message.payload.winner_id === myId) {
-            result.textContent = "Victory! Your tank wins.";
-          } else {
-            result.textContent = "Defeat. Better spelling next round.";
-          }
-        });
+        fx.whenIdle(() => renderResult(message.payload));
         addLog(`Match ended: ${message.payload.reason}`);
         showRematch();
       }

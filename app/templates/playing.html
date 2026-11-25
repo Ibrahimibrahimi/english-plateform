@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon %}
 {% block title %}SpellBattle | Battle{% endblock %}
 {% block page %}playing{% endblock %}
 {% block content %}
@@ -65,8 +66,35 @@
     </div>
   </section>
 
-  <div id="result" class="hidden alert alert-success text-lg font-bold"></div>
-  <section id="rematch-panel" class="hidden tank-card rounded-box bg-base-100 p-4">
+  <div id="connection-banner" class="connection-banner hidden" role="status" aria-live="polite">
+    <div>
+      <strong id="connection-title" class="font-display text-lg">Connection lost</strong>
+      <p id="connection-detail" class="text-sm opacity-70">Trying to rejoin the arena.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button id="connection-retry" class="btn btn-warning btn-sm hidden">Retry now</button>
+      <a id="connection-login" class="btn btn-outline btn-sm hidden" href="/profile?next={{ request.path | urlencode }}">Log in</a>
+      <a id="connection-back" class="btn btn-ghost btn-sm hidden" href="/play">Back to play</a>
+    </div>
+  </div>
+
+  <section id="result" class="result-card hidden" role="status" aria-live="polite">
+    <div class="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <span id="result-kicker" class="eyebrow">Battle complete</span>
+        <h2 id="result-title" class="text-3xl">Victory</h2>
+        <p id="result-message" class="mt-1 opacity-80"></p>
+        <p id="result-score" class="mt-2 font-mono text-sm opacity-70"></p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a id="result-primary" class="btn btn-warning gap-2" href="/play">{{ icon("arrow", "h-4 w-4") }}<span id="result-primary-label">Play again</span></a>
+        <a id="result-secondary" class="btn btn-outline" href="/leaderboard">Leaderboard</a>
+        <a id="result-tournament" class="btn btn-outline hidden" href="/tournament/search">Tournament</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="rematch-panel" class="panel panel-pad hidden">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 class="card-title text-lg">Rematch</h2>
