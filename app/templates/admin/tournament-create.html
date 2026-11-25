@@ -1,50 +1,43 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon, page_head %}
 {% block title %}SpellBattle | Create tournament{% endblock %}
 {% block page %}admin{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-4xl flex flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <h1 class="text-3xl font-extrabold">Create tournament</h1>
-      <p class="opacity-70 mt-2">Admin only. Players join with the generated key.</p>
-    </div>
-    <a href="/admin" class="btn btn-outline">Back to admin panel</a>
-  </div>
-  <section class="card bg-base-100 border border-base-300">
-    <div class="card-body">
-      <form id="tournament-form" class="flex flex-col gap-4">
+<div class="page-shell max-w-4xl">
+  {% call page_head("Create tournament", "Admin only. Players join with the generated key.", "Tournament setup") %}
+  <a href="/admin" class="btn btn-outline gap-2">{{ icon("arrow", "h-4 w-4") }}Back to admin</a>
+  {% endcall %}
+  <section class="panel panel-pad fade-in">
+    <form id="tournament-form" class="flex flex-col gap-5">
+      <label class="form-control">
+        <span class="label-text font-semibold">Tournament name</span>
+        <input name="name" class="input input-bordered" placeholder="Tournament name" minlength="3" maxlength="100" required />
+      </label>
+      <label class="form-control">
+        <span class="label-text font-semibold">Description</span>
+        <input name="description" class="input input-bordered" placeholder="Description" maxlength="300" />
+      </label>
+      <div class="grid gap-4 sm:grid-cols-2">
         <label class="form-control">
-          <span class="label-text font-semibold">Tournament name</span>
-          <input name="name" class="input input-bordered" placeholder="Tournament name" minlength="3" maxlength="100" required />
+          <span class="label-text font-semibold">Maximum players</span>
+          <input name="max_players" type="number" min="{{ min_players }}" max="{{ max_players }}" value="{{ default_players }}" class="input input-bordered" required />
         </label>
         <label class="form-control">
-          <span class="label-text font-semibold">Description</span>
-          <input name="description" class="input input-bordered" placeholder="Description" maxlength="300" />
+          <span class="label-text font-semibold">Allowed letters</span>
+          <input name="allowed_letters" class="input input-bordered uppercase tracking-[0.18em]" value="{{ default_letters }}" />
         </label>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <label class="form-control">
-            <span class="label-text font-semibold">Maximum players</span>
-            <input name="max_players" type="number" min="{{ min_players }}" max="{{ max_players }}" value="{{ default_players }}" class="input input-bordered" required />
-          </label>
-          <label class="form-control">
-            <span class="label-text font-semibold">Allowed letters</span>
-            <input name="allowed_letters" class="input input-bordered uppercase" value="{{ default_letters }}" />
-          </label>
-        </div>
-        <fieldset>
-          <legend class="label-text font-semibold mb-2">Enabled special moves</legend>
-          <div id="skill-options" class="flex flex-wrap gap-2"></div>
-        </fieldset>
-        <button class="btn btn-warning" type="submit">Create tournament</button>
-      </form>
-      <div id="tournament-create-result" class="mt-4 text-sm"></div>
-    </div>
+      </div>
+      <fieldset>
+        <legend class="label-text mb-2 font-semibold">Enabled special moves</legend>
+        <div id="skill-options" class="flex flex-wrap gap-2"></div>
+      </fieldset>
+      <button class="btn btn-warning gap-2 self-start" type="submit">{{ icon("plus", "h-4 w-4") }}Create tournament</button>
+    </form>
+    <div id="tournament-create-result" class="mt-5 text-sm"></div>
   </section>
-  <section class="card bg-base-100 border border-base-300">
-    <div class="card-body">
-      <h2 class="card-title">Existing tournaments</h2>
-      <div id="admin-tournaments" class="grid gap-3 md:grid-cols-2"></div>
-    </div>
+  <section class="panel panel-pad fade-in">
+    <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("trophy", "h-5 w-5 text-primary") }}Existing tournaments</h2>
+    <div id="admin-tournaments" class="grid gap-3 md:grid-cols-2"></div>
   </section>
 </div>
 {% endblock %}
