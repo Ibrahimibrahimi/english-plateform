@@ -1,13 +1,17 @@
+import { runTransition, settle, slideIn } from "./motion.js";
+
 const $ = (id) => document.getElementById(id);
 
 export function toast(message, type = "info") {
   const container = $("toasts");
   if (!container) return;
+  const safeType = ["info", "success", "warning", "error"].includes(type) ? type : "info";
   const element = document.createElement("div");
-  element.className = `alert alert-${type} shadow`;
+  element.className = `alert alert-${safeType} shadow-lg`;
   element.textContent = message;
   container.appendChild(element);
-  setTimeout(() => element.remove(), 3500);
+  slideIn(element);
+  setTimeout(() => element.remove(), 3800);
 }
 
 const year = $("year");
@@ -15,18 +19,21 @@ if (year) year.textContent = new Date().getFullYear();
 
 const themeToggle = $("theme-toggle");
 if (themeToggle) {
+  themeToggle.checked = document.documentElement.dataset.theme !== "arena-day";
   try {
     const saved = localStorage.getItem("theme");
-    if (saved) {
-      document.documentElement.setAttribute("data-theme", saved);
+    if (saved === "dark" || saved === "light") {
+      const migrated = saved === "dark" ? "arena" : "arena-day";
+      document.documentElement.dataset.theme = migrated;
+      localStorage.setItem("theme", migrated);
       themeToggle.checked = saved === "dark";
     }
   } catch (error) {
     toast("Theme preferences are unavailable", "warning");
   }
   themeToggle.addEventListener("change", () => {
-    const theme = themeToggle.checked ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", theme);
+    const theme = themeToggle.checked ? "arena" : "arena-day";
+    runTransition(() => document.documentElement.setAttribute("data-theme", theme));
     try {
       localStorage.setItem("theme", theme);
     } catch (error) {
@@ -35,6 +42,15 @@ if (themeToggle) {
   });
 }
 
+const path = location.pathname.replace(/\/+$/, "") || "/";
+document.querySelectorAll("[data-nav]").forEach((link) => {
+  const href = link.getAttribute("href").replace(/\/+$/, "") || "/";
+  const active = href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`);
+  link.classList.toggle("active", active);
+  if (active) link.setAttribute("aria-current", "page");
+  else link.removeAttribute("aria-current");
+});
+
 const drawer = $("menu-drawer");
 if (drawer) {
   document.addEventListener("keydown", (event) => {
@@ -42,16 +58,15 @@ if (drawer) {
     if (event.key.toLowerCase() === "m") drawer.checked = !drawer.checked;
     if (event.key === "Escape") drawer.checked = false;
   });
-  document.querySelectorAll("#side-menu a").forEach((link) => {
-    link.classList.toggle("active", link.getAttribute("href") === location.pathname);
-  });
 }
 
-const howtoButton = $("howto-btn");
 const howtoModal = $("howto-modal");
 if (howtoModal) {
   document.querySelectorAll("#howto-btn, [data-open-howto]").forEach((button) => {
-    button.addEventListener("click", () => howtoModal.showModal());
+    button.addEventListener("click", () => {
+      howtoModal.showModal();
+      settle(howtoModal.querySelector(".modal-box"));
+    });
   });
 }
 
@@ -68,7 +83,6 @@ if (logoutButton) {
   });
 }
 
-// Challenge notifications: persisted list plus a realtime presence socket.
 const userId = document.body?.dataset.userId;
 if (userId) {
   const { request, escapeHtml } = await import("./api.js");

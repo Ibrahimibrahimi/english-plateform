@@ -1,3 +1,4 @@
+{% from "_components.html" import icon %}
 <!DOCTYPE html>
 <html lang="en" data-theme="arena">
 <head>
@@ -13,92 +14,140 @@
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link href="/static/css/index.css" rel="stylesheet" />
 </head>
-<body class="bg-base-200 min-h-screen" data-page="{% block page %}{% endblock %}" data-user-id="{{ user.id if user else '' }}">
+<body class="bg-base-200 min-h-screen antialiased" data-page="{% block page %}{% endblock %}" data-user-id="{{ user.id if user else '' }}">
+  <a class="skip-link btn btn-warning btn-sm" href="#main-content">Skip to content</a>
+
   <div class="drawer">
     <input id="menu-drawer" type="checkbox" class="drawer-toggle" />
-    <div class="drawer-content flex flex-col min-h-screen">
-      <header class="navbar bg-base-100 border-b border-base-300 px-4">
-        <div class="navbar-start">
-          <label for="menu-drawer" class="btn btn-square btn-ghost" aria-label="Open menu" title="Menu (press M)">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+    <div class="drawer-content flex min-h-screen flex-col">
+      <header class="navbar sticky top-0 z-40 border-b border-base-300 bg-base-100/90 px-3 backdrop-blur-xl sm:px-5">
+        <div class="navbar-start gap-2">
+          <label for="menu-drawer" class="btn btn-square btn-ghost lg:hidden" aria-label="Open menu" title="Menu (press M)">
+            {{ icon("menu", "h-5 w-5") }}
           </label>
+          <a href="/" class="group flex items-center gap-2" aria-label="SpellBattle home">
+            <span class="grid h-9 w-9 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning shadow-lg transition-transform group-hover:rotate-6">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" /></svg>
+            </span>
+            <span class="font-display text-lg font-bold tracking-wide sm:text-xl">Spell<span class="glow-text">Battle</span></span>
+          </a>
         </div>
-        <div class="navbar-center">
-          <a href="/" class="text-xl font-extrabold tracking-wide">Spell<span class="text-warning">Battle</span></a>
-        </div>
-        <div class="navbar-end gap-2">
-          <label class="swap swap-rotate btn btn-ghost btn-circle" title="Toggle theme">
+
+        <nav class="navbar-center hidden lg:flex" aria-label="Primary">
+          <ul class="menu menu-horizontal gap-1 p-0">
+            <li><a href="/" data-nav class="nav-link gap-2 px-3">{{ icon("home", "h-4 w-4") }}<span>Home</span></a></li>
+            <li><a href="/play" data-nav class="nav-link gap-2 px-3">{{ icon("play", "h-4 w-4") }}<span>Play</span></a></li>
+            <li><a href="/leaderboard" data-nav class="nav-link gap-2 px-3">{{ icon("trophy", "h-4 w-4") }}<span>Leaderboard</span></a></li>
+            <li><a href="/players" data-nav class="nav-link gap-2 px-3">{{ icon("users", "h-4 w-4") }}<span>Players</span></a></li>
+            <li><a href="/friends" data-nav class="nav-link gap-2 px-3">{{ icon("friends", "h-4 w-4") }}<span>Friends</span></a></li>
+            <li><a href="/challenge/list" data-nav class="nav-link gap-2 px-3">{{ icon("key", "h-4 w-4") }}<span>Challenges</span></a></li>
+            {% if user and user.role == 'admin' %}
+            <li><a href="/admin" data-nav class="nav-link gap-2 px-3">{{ icon("admin", "h-4 w-4") }}<span>Admin</span></a></li>
+            {% endif %}
+          </ul>
+        </nav>
+
+        <div class="navbar-end gap-1 sm:gap-2">
+          <label class="swap swap-rotate btn btn-ghost btn-circle" title="Toggle theme" aria-label="Toggle theme">
             <input id="theme-toggle" type="checkbox" />
-            <svg class="swap-off h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M5.64 17l-.71.71a1 1 0 000 1.41 1 1 0 001.41 0l.71-.71A1 1 0 005.64 17zM5 12a1 1 0 00-1-1H3a1 1 0 000 2h1a1 1 0 001-1zm7-7a1 1 0 001-1V3a1 1 0 00-2 0v1a1 1 0 001 1zM5.64 7.05a1 1 0 00.7.29 1 1 0 00.71-.29 1 1 0 000-1.41l-.71-.71a1 1 0 00-1.41 1.41zm12 .29a1 1 0 00.7-.29l.71-.71a1 1 0 10-1.41-1.41l-.71.71a1 1 0 000 1.41 0 1 0 0 .71.29zM21 11h-1a1 1 0 000 2h1a1 1 0 000-2zm-9 8a1 1 0 00-1 1v1a1 1 0 002 0v-1a1 1 0 00-1-1zm6.36-2A1 1 0 0017 18.36l.71.71a1 1 0 001.41 0 1 1 0 000-1.41zM12 6.5A5.5 5.5 0 1017.5 12 5.51 5.51 0 0012 6.5zm0 9A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z"/></svg>
-            <svg class="swap-on h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M21.64 13a1 1 0 00-1.05-.14 8.05 8.05 0 01-3.37.73 8.15 8.15 0 01-8.14-8.1 8.59 8.59 0 01.25-2A1 1 0 008 2.36a10.14 10.14 0 1014 11.69 1 1 0 00-.36-1.05zm-9.5 6.69A8.14 8.14 0 017.08 5.22v.27A10.15 10.15 0 0017.22 15.63a9.79 9.79 0 002.1-.22 8.14 8.14 0 01-7.18 4.32z"/></svg>
+            {{ icon("sun", "swap-off h-5 w-5") }}
+            {{ icon("moon", "swap-on h-5 w-5") }}
           </label>
           {% if user %}
-          <span class="badge badge-warning badge-outline font-bold" title="Lifetime learning points">{{ user.lifetime_learning_points }} pts</span>
           <div class="dropdown dropdown-end">
-            <label tabindex="0" class="btn btn-ghost btn-circle" aria-label="Notifications" title="Notifications">
-              🔔<span id="notification-count" class="badge badge-warning badge-xs hidden absolute -top-1 -right-1">0</span>
+            <label tabindex="0" class="btn btn-ghost btn-circle relative" aria-label="Notifications" title="Notifications">
+              {{ icon("bell", "h-5 w-5") }}
+              <span id="notification-count" class="badge badge-warning badge-xs absolute -right-1 -top-1 hidden">0</span>
             </label>
-            <ul tabindex="0" id="notification-list" class="dropdown-content menu bg-base-100 rounded-box z-[70] w-80 p-2 shadow border border-base-300">
+            <ul tabindex="0" id="notification-list" class="dropdown-content menu z-[70] w-[min(20rem,calc(100vw-2rem))] rounded-box border border-base-300 bg-base-100 p-2 shadow-2xl">
               <li class="menu-title">Notifications</li>
-              <li><span class="opacity-60 text-sm">Loading...</span></li>
+              <li><span class="text-sm opacity-60">Loading...</span></li>
             </ul>
           </div>
-          <a href="/profile" class="tooltip tooltip-bottom" data-tip="Your profile" aria-label="Profile">
-            <div class="avatar avatar-placeholder transition-transform hover:scale-110">
-              <div id="avatar-initials" class="w-11 rounded-full text-xl flex items-center justify-center overflow-hidden ring-2 ring-base-content/80 ring-offset-2 ring-offset-base-100"{% if not avatar.image_url %} style="background:{{ avatar.color }}"{% endif %}>
+          <div class="dropdown dropdown-end">
+            <label tabindex="0" class="btn btn-ghost btn-circle avatar" aria-label="Account menu">
+              <div id="avatar-initials" class="flex w-11 items-center justify-center overflow-hidden rounded-full text-xl ring-2 ring-warning/70 ring-offset-2 ring-offset-base-100"{% if not avatar.image_url %} style="background:{{ avatar.color }}"{% endif %}>
                 {% if avatar.image_url %}<img src="{{ avatar.image_url }}" alt="Your avatar" class="h-full w-full object-cover" />{% else %}<span>{{ avatar.emoji }}</span>{% endif %}
               </div>
-            </div>
-          </a>
-          <button id="logout-btn" class="btn btn-ghost btn-sm">Log out</button>
+            </label>
+            <ul tabindex="0" class="dropdown-content menu z-[70] w-60 rounded-box border border-base-300 bg-base-100 p-2 shadow-2xl">
+              <li class="menu-title">
+                <span class="flex flex-col gap-1">
+                  <span class="font-display text-sm font-bold">{{ user.username }}</span>
+                  <span class="badge badge-warning badge-sm self-start">{{ user.lifetime_learning_points }} pts</span>
+                </span>
+              </li>
+              <li><a href="/profile">{{ icon("user", "h-4 w-4") }}Profile</a></li>
+              <li><a href="/friends">{{ icon("friends", "h-4 w-4") }}Friends</a></li>
+              <li><button id="logout-btn" type="button">{{ icon("logout", "h-4 w-4") }}Log out</button></li>
+            </ul>
+          </div>
           {% else %}
-          <a href="/profile" class="btn btn-warning btn-sm">Log in</a>
+          <a href="/profile?next={{ request.path | urlencode }}" class="btn btn-warning btn-sm gap-1">{{ icon("arrow", "h-4 w-4") }}Log in</a>
           {% endif %}
         </div>
       </header>
 
-      <main class="flex-1 w-full px-4 py-10">
+      <main id="main-content" class="relative w-full flex-1 px-3 py-8 sm:px-5 sm:py-12">
         {% block content %}{% endblock %}
       </main>
 
-      <footer class="footer footer-center p-4 text-sm opacity-60">
-        <p>© <span id="year"></span> SpellBattle. Press <kbd class="kbd kbd-sm">M</kbd> to open the menu.</p>
+      <footer class="footer footer-center gap-1 p-5 text-sm opacity-70">
+        <p>© <span id="year"></span> SpellBattle</p>
+        <p>Press <kbd class="kbd kbd-sm">M</kbd> for the command deck.</p>
       </footer>
     </div>
 
     <div class="drawer-side z-50">
       <label for="menu-drawer" aria-label="Close menu" class="drawer-overlay"></label>
-      <aside class="bg-base-100 min-h-full w-72 p-4 flex flex-col gap-2">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-lg font-extrabold">Menu</span>
-          <label for="menu-drawer" class="btn btn-sm btn-circle btn-ghost">✕</label>
+      <aside class="flex min-h-full w-[min(19rem,86vw)] flex-col gap-3 border-r border-base-300 bg-base-100 p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="eyebrow">Command deck</span>
+            <div class="font-display text-xl font-bold">SpellBattle</div>
+          </div>
+          <label for="menu-drawer" class="btn btn-sm btn-circle btn-ghost" aria-label="Close menu">{{ icon("close", "h-4 w-4") }}</label>
         </div>
+        <div class="divider my-0"></div>
         <ul class="menu w-full gap-1 p-0" id="side-menu">
-          <li><a href="/">🏠 Home</a></li>
-          <li><a href="/play">🎮 Play</a></li>
-          <li><a href="/play-with-friend">👥 Play With Friend</a></li>
-          <li><a href="/leaderboard">📊 Leaderboard</a></li>
-          <li><a href="/players">👥 Online players</a></li>
-          <li><a href="/friends">🤝 Friends <span id="friend-request-count" class="badge badge-warning badge-xs hidden">0</span></a></li>
-          <li><a href="/challenge/list">🔑 Private challenges</a></li>
+          <li><a href="/" data-nav class="nav-link">{{ icon("home", "h-4 w-4") }}Home</a></li>
+          <li><a href="/play" data-nav class="nav-link">{{ icon("play", "h-4 w-4") }}Play</a></li>
+          <li><a href="/play-with-friend" data-nav class="nav-link">{{ icon("users", "h-4 w-4") }}Play with a friend</a></li>
+          <li><a href="/leaderboard" data-nav class="nav-link">{{ icon("trophy", "h-4 w-4") }}Leaderboard</a></li>
+          <li><a href="/players" data-nav class="nav-link">{{ icon("users", "h-4 w-4") }}Online players</a></li>
+          <li><a href="/friends" data-nav class="nav-link">{{ icon("friends", "h-4 w-4") }}Friends<span id="friend-request-count" class="badge badge-warning badge-xs hidden">0</span></a></li>
+          <li><a href="/challenge/list" data-nav class="nav-link">{{ icon("key", "h-4 w-4") }}Private challenges</a></li>
+          <li><a href="/tournament/search" data-nav class="nav-link">{{ icon("trophy", "h-4 w-4") }}Tournaments</a></li>
           {% if user and user.role == 'admin' %}
-          <li><a href="/admin/tournaments/new">🛠️ Create tournament</a></li>
-          <li><a href="/admin">⚙️ Admin panel</a></li>
+          <li><a href="/admin/tournaments/new" data-nav class="nav-link">{{ icon("plus", "h-4 w-4") }}Create tournament</a></li>
+          <li><a href="/admin" data-nav class="nav-link">{{ icon("admin", "h-4 w-4") }}Admin panel</a></li>
           {% endif %}
         </ul>
         <div class="mt-auto flex flex-col gap-2">
-          <button id="howto-btn" class="btn btn-warning w-full">How to play</button>
+          <button id="howto-btn" class="btn btn-warning w-full gap-2">{{ icon("play", "h-4 w-4") }}How to play</button>
+          {% if user %}
+          <div class="stat-tile">
+            <span>Lifetime points</span>
+            <strong>{{ user.lifetime_learning_points }}</strong>
+          </div>
+          {% else %}
+          <a href="/profile?next={{ request.path | urlencode }}" class="btn btn-outline w-full">Log in to compete</a>
+          {% endif %}
         </div>
       </aside>
     </div>
   </div>
 
   <dialog id="howto-modal" class="modal">
-    <div class="modal-box">
-      <h3 class="text-lg font-bold">How to play</h3>
-      <ol class="list-decimal ml-5 mt-3 space-y-2 opacity-90">
+    <div class="modal-box panel max-w-2xl">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("play", "h-5 w-5") }}</span>
+        <div>
+          <h3 class="text-xl font-bold">How to play</h3>
+          <p class="text-sm opacity-70">Turn letters into words. Words into firepower.</p>
+        </div>
+      </div>
+      <ol class="ml-5 mt-4 list-decimal space-y-2 text-sm opacity-90">
         <li>Each round gives both players the same letters chosen by the admin.</li>
         <li>Type an English word using only those letters; letters may be reused and words cannot be repeated in a round.</li>
         <li>Longer words earn more points and fire your tank at the opponent.</li>
@@ -113,7 +162,7 @@
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
   </dialog>
 
-  <div class="toast toast-end z-[60]" id="toasts"></div>
+  <div class="toast toast-end z-[60]" id="toasts" aria-live="polite"></div>
   <script type="module" src="/static/js/ui.js"></script>
   {% block scripts %}{% endblock %}
 </body>

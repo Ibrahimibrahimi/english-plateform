@@ -1,0 +1,47 @@
+{% macro icon(name, class="h-5 w-5") %}
+<svg xmlns="http://www.w3.org/2000/svg" class="{{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  {% if name == "menu" %}<path d="M4 6h16M4 12h16M4 18h16" />
+  {% elif name == "close" %}<path d="M6 6l12 12M18 6 6 18" />
+  {% elif name == "home" %}<path d="M3 10.5 12 3l9 7.5M5 10v10h14V10M9 20v-6h6v6" />
+  {% elif name == "play" %}<path d="M8 5v14l11-7z" />
+  {% elif name == "trophy" %}<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" />
+  {% elif name == "users" %}<path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-2a4 4 0 0 0-3-3.87M16 2.13a4 4 0 0 1 0 7.75" />
+  {% elif name == "friends" %}<path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6" />
+  {% elif name == "key" %}<path d="M21 2l-2 2M15 7a5 5 0 1 1-6 6l-6 6v3h3l6-6a5 5 0 0 1 3-9z" />
+  {% elif name == "admin" %}<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06-2 2-.06-.06A1.7 1.7 0 0 0 16 18.6a1.7 1.7 0 0 0-1 1.55V21h-3v-.85A1.7 1.7 0 0 0 11 18.6a1.7 1.7 0 0 0-1.87.34l-.06.06-2-2 .06-.06A1.7 1.7 0 0 0 7.4 15a1.7 1.7 0 0 0-1.55-1H5v-3h.85A1.7 1.7 0 0 0 7.4 10a1.7 1.7 0 0 0-.34-1.87l-.06-.06 2-2 .06.06A1.7 1.7 0 0 0 11 6.4a1.7 1.7 0 0 0 1-1.55V4h3v.85A1.7 1.7 0 0 0 16 6.4a1.7 1.7 0 0 0 1.87-.34l.06-.06 2 2-.06.06A1.7 1.7 0 0 0 19.4 10c.2.6.77 1.04 1.42 1.04H21v3h-.18A1.7 1.7 0 0 0 19.4 15z" />
+  {% elif name == "bell" %}<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+  {% elif name == "sun" %}<path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" />
+  {% elif name == "moon" %}<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />
+  {% elif name == "user" %}<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+  {% elif name == "logout" %}<path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+  {% elif name == "arrow" %}<path d="M5 12h14M13 6l6 6-6 6" />
+  {% elif name == "plus" %}<path d="M12 5v14M5 12h14" />
+  {% elif name == "search" %}<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35" />
+  {% elif name == "chart" %}<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+  {% endif %}
+</svg>
+{% endmacro %}
+
+{% macro page_head(title, subtitle="", eyebrow="") %}
+<div class="page-head fade-in">
+  <div>
+    {% if eyebrow %}<span class="eyebrow">{{ eyebrow }}</span>{% endif %}
+    <h1>{{ title }}</h1>
+    {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+  </div>
+  {{ caller() if caller else "" }}
+</div>
+{% endmacro %}
+
+{% macro empty_state(title, message="") %}
+<div class="empty-state fade-in">
+  <strong>{{ title }}</strong>
+  {% if message %}<span class="text-sm">{{ message }}</span>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro loading(count=3) %}
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  {% for _ in range(count) %}<div class="skeleton h-28"></div>{% endfor %}
+</div>
+{% endmacro %}
