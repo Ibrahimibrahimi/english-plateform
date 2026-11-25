@@ -1,4 +1,4 @@
-import { request } from "./api.js";
+import { escapeHtml, request } from "./api.js";
 import { toast } from "./ui.js";
 
 const loginForm = document.getElementById("login-form");
@@ -72,13 +72,13 @@ if (avatarPicker) {
         });
         const preview = document.getElementById("profile-avatar");
         if (preview) {
-          preview.textContent = choice.textContent;
+          preview.replaceChildren(choice.textContent);
           preview.style.background = choice.style.background;
         }
         const navAvatar = document.getElementById("avatar-initials");
         if (navAvatar) {
-          navAvatar.textContent = choice.textContent;
-          navAvatar.parentElement.style.background = choice.style.background;
+          navAvatar.replaceChildren(choice.textContent);
+          navAvatar.style.background = choice.style.background;
         }
         document.getElementById("avatar-feedback").textContent = "Profile picture saved.";
         toast("Profile picture updated", "success");
@@ -86,6 +86,39 @@ if (avatarPicker) {
         toast(error.message, "error");
       }
     });
+  });
+}
+
+const avatarForm = document.getElementById("avatar-upload-form");
+if (avatarForm) {
+  avatarForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const file = document.getElementById("avatar-file").files[0];
+    if (!file) return;
+    const payload = new FormData();
+    payload.append("image", file);
+    try {
+      const user = await request("/api/me/avatar", { method: "POST", body: payload });
+      const image = `<img src="${escapeHtml(user.avatar.image_url)}" alt="Your avatar" class="h-full w-full object-cover" />`;
+      const preview = document.getElementById("profile-avatar");
+      if (preview) {
+        preview.innerHTML = image;
+        preview.style.background = "";
+      }
+      const navAvatar = document.getElementById("avatar-initials");
+      if (navAvatar) {
+        navAvatar.innerHTML = image;
+        navAvatar.style.background = "";
+      }
+      avatarPicker?.querySelectorAll(".avatar-option").forEach((option) => {
+        option.classList.remove("border-warning");
+        option.classList.add("border-transparent");
+      });
+      document.getElementById("avatar-feedback").textContent = "Profile picture uploaded.";
+      toast("Profile picture updated", "success");
+    } catch (error) {
+      toast(error.message, "error");
+    }
   });
 }
 

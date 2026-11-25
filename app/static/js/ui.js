@@ -74,6 +74,18 @@ if (userId) {
   const { request, escapeHtml } = await import("./api.js");
   const countEl = $("notification-count");
   const listEl = $("notification-list");
+  const friendCountEl = $("friend-request-count");
+
+  const renderFriendBadge = async () => {
+    if (!friendCountEl) return;
+    try {
+      const data = await request("/api/friends/count");
+      friendCountEl.textContent = data.count;
+      friendCountEl.classList.toggle("hidden", !data.count);
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  };
 
   const renderNotifications = async () => {
     try {
@@ -113,6 +125,7 @@ if (userId) {
   };
 
   renderNotifications();
+  renderFriendBadge();
 
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   let notificationSocket = null;
@@ -129,6 +142,7 @@ if (userId) {
       if (message.type === "notification") {
         toast(message.payload.message, "warning");
         renderNotifications();
+        renderFriendBadge();
       }
     });
     notificationSocket.addEventListener("close", () => {

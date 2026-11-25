@@ -1,10 +1,15 @@
-import { escapeHtml, request } from "./api.js";
+import { avatarHtml, escapeHtml, request } from "./api.js";
 import { toast } from "./ui.js";
 
-const avatar = (player) => `
-  <div class="avatar avatar-placeholder">
-    <div class="w-12 rounded-full text-2xl flex items-center justify-center" style="background:${escapeHtml(player.avatar.color)}">${player.avatar.emoji}</div>
-  </div>`;
+const settings = await request("/api/config");
+const skillText = (raw) => {
+  const codes = (raw || "").split(",").filter(Boolean);
+  if (!codes.length) return "All";
+  return codes.map((code) => {
+    const skill = settings.skills.find((item) => item.code === code);
+    return skill ? `${skill.icon || "✨"} ${skill.label}` : code;
+  }).join(", ");
+};
 
 const container = document.getElementById("challenge-list");
 if (container) {
@@ -14,7 +19,7 @@ if (container) {
       <div class="card bg-base-100 border border-base-300">
         <div class="card-body p-4 gap-2">
           <div class="flex items-center gap-3">
-            ${avatar(challenge.creator)}
+            ${avatarHtml(challenge.creator.avatar, challenge.creator.username, "w-12 text-2xl")}
             <div class="min-w-0">
               <h2 class="font-bold truncate">${escapeHtml(challenge.creator.username)}</h2>
               <p class="text-xs opacity-70">
@@ -23,7 +28,7 @@ if (container) {
               </p>
             </div>
           </div>
-          <p class="text-xs opacity-70">Skills: ${escapeHtml(challenge.skills || "All")}</p>
+          <p class="text-xs opacity-70">Skills: ${escapeHtml(skillText(challenge.skills))}</p>
           <p class="text-xs opacity-70">
             ${challenge.creator.lifetime_learning_points} points · ${challenge.creator.wins} wins
           </p>

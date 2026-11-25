@@ -8,7 +8,9 @@
     <div class="card-body">
       <div class="flex items-center gap-4">
         <div class="avatar avatar-placeholder">
-          <div id="profile-avatar" class="w-16 rounded-full text-3xl flex items-center justify-center" style="background:{{ avatar.color }}">{{ avatar.emoji }}</div>
+          <div id="profile-avatar" class="w-16 rounded-full text-3xl flex items-center justify-center overflow-hidden"{% if not avatar.image_url %} style="background:{{ avatar.color }}"{% endif %}>
+            {% if avatar.image_url %}<img src="{{ avatar.image_url }}" alt="Your avatar" class="h-full w-full object-cover" />{% else %}{{ avatar.emoji }}{% endif %}
+          </div>
         </div>
         <div>
           <h1 class="card-title text-2xl">{{ user.username }}</h1>
@@ -24,6 +26,11 @@
           </button>
           {% endfor %}
         </div>
+        <form id="avatar-upload-form" class="flex flex-wrap items-center gap-2 mt-4">
+          <input id="avatar-file" name="image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" class="file-input file-input-bordered file-input-sm" required />
+          <button class="btn btn-outline btn-sm" type="submit">Upload picture</button>
+        </form>
+        <p class="text-xs opacity-60 mt-1">PNG, JPEG, GIF or WEBP, up to {{ avatar_max_bytes // 1024 // 1024 }} MB.</p>
         <p id="avatar-feedback" class="text-sm mt-2 opacity-70"></p>
       </div>
       <div class="stats stats-vertical lg:stats-horizontal shadow mt-4 w-full">

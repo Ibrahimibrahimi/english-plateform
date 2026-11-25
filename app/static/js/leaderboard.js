@@ -1,32 +1,31 @@
-import { escapeHtml, request } from "./api.js";
+import { avatarHtml, escapeHtml, request } from "./api.js";
 
 const podium = document.getElementById("medal-podium");
 const body = document.getElementById("leaderboard-body");
 
-const medals = [
-  { rank: 1, emoji: "🥇", color: "#f5c518", ring: "ring-warning" },
-  { rank: 2, emoji: "🥈", color: "#c0c8d1", ring: "ring-base-content/40" },
-  { rank: 3, emoji: "🥉", color: "#cd7f32", ring: "ring-error/50" },
-];
+const medals = {
+  1: { emoji: "🥇", color: "#f5c518", ring: "ring-warning" },
+  2: { emoji: "🥈", color: "#c0c8d1", ring: "ring-base-content/40" },
+  3: { emoji: "🥉", color: "#cd7f32", ring: "ring-error/50" },
+};
 
-const avatarHtml = (row, size = "w-10") => `
-  <div class="avatar avatar-placeholder">
-    <div class="${size} rounded-full text-xl flex items-center justify-center" style="background:${escapeHtml(row.avatar.color)}">${row.avatar.emoji}</div>
-  </div>`;
+const avatarFor = (row, size) => avatarHtml(row.avatar, row.username, size);
 
 try {
   const rows = await request("/api/leaderboard");
 
   if (podium) {
-    const winners = rows.filter((row) => row.medal).slice(0, 3);
+    const byRank = new Map(rows.filter((row) => row.medal).slice(0, 3).map((row) => [row.rank, row]));
+    const winners = [2, 1, 3].map((rank) => byRank.get(rank)).filter(Boolean);
     podium.innerHTML = winners.length
-      ? winners.map((row, index) => {
-          const medal = medals[index];
+      ? winners.map((row) => {
+          const medal = medals[row.rank];
+          const first = row.rank === 1;
           return `
-            <a href="${escapeHtml(row.profile_url)}" class="card bg-base-100 border-2 border-base-300 hover:-translate-y-1 transition ${medal.ring} ring-2">
+            <a href="${escapeHtml(row.profile_url)}" class="card bg-base-100 border-2 border-base-300 hover:-translate-y-1 transition ${medal.ring} ring-2 ${first ? "podium-first" : ""}">
               <div class="card-body items-center text-center gap-2 py-6">
                 <div class="text-4xl">${medal.emoji}</div>
-                ${avatarHtml(row, "w-16")}
+                ${avatarFor(row, first ? "w-20" : "w-16")}
                 <h3 class="card-title text-lg">${escapeHtml(row.username)}</h3>
                 <p class="text-3xl font-extrabold" style="color:${medal.color}">${row.points}</p>
                 <p class="text-xs opacity-60 uppercase tracking-wide">learning points</p>
@@ -42,8 +41,8 @@ try {
     body.innerHTML = rows.length
       ? rows.map((row) => `
           <tr class="${row.medal ? "bg-warning/10" : ""}">
-            <th>${row.rank}${row.medal ? " " + medals[row.rank - 1].emoji : ""}</th>
-            <td><div class="flex items-center gap-3">${avatarHtml(row)}<span class="font-semibold">${escapeHtml(row.username)}</span></div></td>
+            <th>${row.rank}${row.medal ? " " + medals[row.rank].emoji : ""}</th>
+            <td><div class="flex items-center gap-3">${avatarFor(row)}<span class="font-semibold">${escapeHtml(row.username)}</span></div></td>
             <td class="font-extrabold text-warning">${row.points}</td>
             <td>${row.wins} W / ${row.losses} L</td>
             <td>${row.tournaments_played}</td>

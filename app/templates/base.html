@@ -42,8 +42,8 @@
           </div>
           <a href="/profile" class="tooltip tooltip-bottom" data-tip="Your profile" aria-label="Profile">
             <div class="avatar avatar-placeholder transition-transform hover:scale-110">
-              <div class="w-11 rounded-full text-xl flex items-center justify-center ring-2 ring-base-content/80 ring-offset-2 ring-offset-base-100" style="background:{{ avatar.color }}">
-                <span id="avatar-initials">{{ avatar.emoji }}</span>
+              <div id="avatar-initials" class="w-11 rounded-full text-xl flex items-center justify-center overflow-hidden ring-2 ring-base-content/80 ring-offset-2 ring-offset-base-100"{% if not avatar.image_url %} style="background:{{ avatar.color }}"{% endif %}>
+                {% if avatar.image_url %}<img src="{{ avatar.image_url }}" alt="Your avatar" class="h-full w-full object-cover" />{% else %}<span>{{ avatar.emoji }}</span>{% endif %}
               </div>
             </div>
           </a>
@@ -76,6 +76,7 @@
           <li><a href="/play-with-friend">👥 Play With Friend</a></li>
           <li><a href="/leaderboard">📊 Leaderboard</a></li>
           <li><a href="/players">👥 Online players</a></li>
+          <li><a href="/friends">🤝 Friends <span id="friend-request-count" class="badge badge-warning badge-xs hidden">0</span></a></li>
           <li><a href="/challenge/list">🔑 Private challenges</a></li>
           {% if user and user.role == 'admin' %}
           <li><a href="/admin/tournaments/new">🛠️ Create tournament</a></li>

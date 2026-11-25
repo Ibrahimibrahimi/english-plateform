@@ -7,6 +7,7 @@ never concatenated into SQL.
 """
 
 import re
+from pathlib import Path
 
 from app import configs
 
@@ -65,3 +66,35 @@ def clean_avatar(value) -> str:
     """Return a known avatar key, falling back to the configured default."""
     key = clean_text(value, configs.KEY_MAX_LENGTH)
     return key if key in configs.AVATARS else configs.DEFAULT_AVATAR
+
+
+def _image_extension(data: bytes) -> str | None:
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def clean_avatar_upload(upload) -> tuple[bytes, str]:
+    """Validate an uploaded image and return its bytes with a safe extension."""
+    name = getattr(upload, "filename", "") or ""
+    extension = Path(name).suffix.lower().lstrip(".")
+    if extension not in configs.AVATAR_UPLOAD_EXTENSIONS:
+        raise ValueError("Use a PNG, JPEG, GIF or WEBP image")
+    data = upload.read(configs.AVATAR_UPLOAD_MAX_BYTES + 1)
+    if not data:
+        raise ValueError("Choose an image to upload")
+    if len(data) > configs.AVATAR_UPLOAD_MAX_BYTES:
+        raise ValueError(f"Images must be smaller than {configs.AVATAR_UPLOAD_MAX_BYTES // 1024 // 1024} MB")
+    detected = _image_extension(data)
+    if detected is None or (detected == "jpg" and extension not in {"jpg", "jpeg"}) or (
+        detected != "jpg" and detected != extension
+    ):
+        raise ValueError("The file does not look like a supported image")
+    upload.stream.seek(0)
+    return data, detected

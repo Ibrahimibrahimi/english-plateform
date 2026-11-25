@@ -13,8 +13,10 @@ from app.validation import ConflictError
 
 def _seed():
     init_db()
+    configs.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     # Keep databases created by older versions working after new settings were added.
     ensure_column("users", "avatar", "VARCHAR(20)", f"'{configs.DEFAULT_AVATAR}'")
+    ensure_column("users", "avatar_image", "VARCHAR(120)", "NULL")
     db = SessionLocal()
     try:
         admin_user = db.query(User).filter(User.role == "admin").first()

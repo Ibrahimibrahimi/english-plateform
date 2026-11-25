@@ -81,6 +81,11 @@ def players():
     return page("players.html")
 
 
+@router.get("/friends")
+def friends():
+    return page("friends.html")
+
+
 @router.get("/player/<int:user_id>")
 def player_profile(user_id: int):
     return page("player-profile.html", profile_id=user_id)
@@ -103,7 +108,12 @@ def playing(match_id: int):
 
 @router.get("/profile")
 def profile():
-    return page("profile.html", avatars=configs.AVATARS, current_avatar=getattr(current_user(), "avatar", configs.DEFAULT_AVATAR))
+    return page(
+        "profile.html",
+        avatars=configs.AVATARS,
+        current_avatar=getattr(current_user(), "avatar", configs.DEFAULT_AVATAR),
+        avatar_max_bytes=configs.AVATAR_UPLOAD_MAX_BYTES,
+    )
 
 
 def _admin_config():

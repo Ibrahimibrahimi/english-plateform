@@ -71,6 +71,7 @@ class LiveMatch:
                     if key not in {"blocked_until", "health_ready_at", "armor_ready_at", "skill_ready_at"}
                 },
                 "skill_label": configs.SKILLS.get(state["skill"]),
+                "skill_icon": configs.SKILL_ICONS.get(state["skill"], "✨") if state["skill"] else None,
                 "blocked": is_blocked(state, now),
                 "health_ready_in": max(0, math.ceil(state["health_ready_at"] - now)),
                 "armor_ready_in": max(0, math.ceil(state["armor_ready_at"] - now)),

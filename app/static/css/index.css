@@ -20,6 +20,12 @@
     .bar-armor { background: #3b82f6; }
     .letter-tile { font-weight: 800; letter-spacing: .05em; }
 
+    .podium-first { z-index: 1; border-color: #f5c518 !important; box-shadow: 0 1rem 2.5rem -.75rem #f5c51880; }
+    @media (min-width: 640px) {
+      .podium-first { translate: 0 -1.5rem; scale: 1.08; }
+      .podium-first .card-body { padding-top: 2.25rem; padding-bottom: 2.25rem; }
+    }
+
 
     /* ---------- Battle arena (animated tanks and soldiers) ---------- */
     .arena {

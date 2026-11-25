@@ -109,7 +109,14 @@ def avatar_info(user: User) -> dict:
     """Return the configured display data for a player's chosen picture."""
     key = getattr(user, "avatar", None) or configs.DEFAULT_AVATAR
     option = configs.AVATARS.get(key, configs.AVATARS[configs.DEFAULT_AVATAR])
-    return {"key": key, "emoji": option["emoji"], "color": option["color"], "label": option["label"]}
+    image = getattr(user, "avatar_image", None)
+    return {
+        "key": "upload" if image else key,
+        "emoji": option["emoji"],
+        "color": option["color"],
+        "label": "Uploaded picture" if image else option["label"],
+        "image_url": f"{configs.UPLOAD_URL_PREFIX}/{image}" if image else None,
+    }
 
 
 def public_user(user: User) -> dict:

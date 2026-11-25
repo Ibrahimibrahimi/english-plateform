@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Friends{% endblock %}
+{% block page %}friends{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl flex flex-col gap-6">
+  <div class="text-center">
+    <h1 class="text-3xl font-extrabold">Friends</h1>
+    <p class="opacity-70 mt-2">Send requests from the players list or a profile, then accept requests here.</p>
+  </div>
+  <div>
+    <h2 class="text-xl font-bold mb-2">Incoming requests <span id="incoming-count" class="badge badge-warning">0</span></h2>
+    <div id="incoming-requests" class="grid gap-3 sm:grid-cols-2"><span class="loading loading-spinner loading-sm"></span></div>
+  </div>
+  <div>
+    <h2 class="text-xl font-bold mb-2">Sent requests</h2>
+    <div id="outgoing-requests" class="grid gap-3 sm:grid-cols-2"><span class="loading loading-spinner loading-sm"></span></div>
+  </div>
+  <div>
+    <h2 class="text-xl font-bold mb-2">Your friends</h2>
+    <div id="friends-list" class="grid gap-3 sm:grid-cols-2"><span class="loading loading-spinner loading-sm"></span></div>
+  </div>
+  <div class="text-center"><a href="/players" class="btn btn-outline">Browse online players</a></div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/friends.js"></script>{% endblock %}

@@ -17,6 +17,10 @@ DATA_DIR = BASE_DIR / "data"
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
 WORDS_FILE = DATA_DIR / "words.txt"
+UPLOAD_DIR = STATIC_DIR / "uploads"
+UPLOAD_URL_PREFIX = "/static/uploads"
+AVATAR_UPLOAD_MAX_BYTES = 2 * 1024 * 1024
+AVATAR_UPLOAD_EXTENSIONS = ("png", "jpg", "jpeg", "gif", "webp")
 
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'spellbattle.db'}")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-change-me")
@@ -26,7 +30,7 @@ SESSION_COOKIE_NAME = "sb_session"
 SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "").lower() in {"1", "true", "yes"}
 COOKIE_SAMESITE = "Lax"
 SESSION_SALT = "spellbattle-session"
-MAX_REQUEST_BYTES = 1024 * 1024
+MAX_REQUEST_BYTES = AVATAR_UPLOAD_MAX_BYTES + 64 * 1024
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8000"))
 
@@ -121,6 +125,13 @@ SKILLS = {
     "CLEAR_OPPONENT_SKILL": "Clear opponent skill",
 }
 SKILL_CODES = list(SKILLS)
+SKILL_ICONS = {
+    "BLOCK_POINTS": "🛡️",
+    "REDUCE_POINTS_PERCENT": "📉",
+    "STEAL_POINTS_RANGE": "💰",
+    "SWAP_SKILLS": "🔄",
+    "CLEAR_OPPONENT_SKILL": "🚫",
+}
 
 # ---------------------------------------------------------------------------
 # Challenges, tournaments and leaderboards
@@ -166,4 +177,33 @@ AVATARS = {
 NOTIFICATIONS_LIMIT = 30
 NOTIFICATION_CHALLENGE_RECEIVED = "challenge.received"
 NOTIFICATION_CHALLENGE_JOINED = "challenge.joined"
-NOTIFICATION_TYPES = (NOTIFICATION_CHALLENGE_RECEIVED, NOTIFICATION_CHALLENGE_JOINED)
+NOTIFICATION_FRIEND_REQUEST_RECEIVED = "friend.request_received"
+NOTIFICATION_FRIEND_REQUEST_ACCEPTED = "friend.request_accepted"
+NOTIFICATION_FRIEND_REQUEST_DECLINED = "friend.request_declined"
+NOTIFICATION_REMATCH_OFFERED = "rematch.offered"
+NOTIFICATION_REMATCH_ACCEPTED = "rematch.accepted"
+NOTIFICATION_REMATCH_DECLINED = "rematch.declined"
+NOTIFICATION_TYPES = (
+    NOTIFICATION_CHALLENGE_RECEIVED,
+    NOTIFICATION_CHALLENGE_JOINED,
+    NOTIFICATION_FRIEND_REQUEST_RECEIVED,
+    NOTIFICATION_FRIEND_REQUEST_ACCEPTED,
+    NOTIFICATION_FRIEND_REQUEST_DECLINED,
+    NOTIFICATION_REMATCH_OFFERED,
+    NOTIFICATION_REMATCH_ACCEPTED,
+    NOTIFICATION_REMATCH_DECLINED,
+)
+
+# ---------------------------------------------------------------------------
+# Friends and rematches
+# ---------------------------------------------------------------------------
+FRIEND_STATUS_PENDING = "pending"
+FRIEND_STATUS_ACCEPTED = "accepted"
+FRIEND_STATUS_DECLINED = "declined"
+REMATCH_STATUS_PENDING = "pending"
+REMATCH_STATUS_ACCEPTED = "accepted"
+REMATCH_STATUS_DECLINED = "declined"
+REMATCH_STATUS_EXPIRED = "expired"
+REMATCH_TTL_HOURS = 24
+CHALLENGE_MODE = "challenge"
+TOURNAMENT_MODE = "tournament"

@@ -69,7 +69,7 @@ if (meta) {
       <p>${escapeHtml(details.description || "No description")}</p>
       <p><b>Status:</b> ${escapeHtml(details.status)} · <b>Players:</b> ${details.participants.length} / ${details.max_players}</p>
       <p><b>Letters:</b> ${escapeHtml(details.allowed_letters)}</p>
-      <p><b>Skills:</b> ${details.skills.map((skill) => escapeHtml(skill.label)).join(", ") || "None"}</p>
+      <p><b>Skills:</b> ${details.skills.map((skill) => `${escapeHtml(skill.icon || "✨")} ${escapeHtml(skill.label)}`).join(", ") || "None"}</p>
       <p><b>Participants:</b> ${details.participants.map((player) => escapeHtml(player.username)).join(", ") || "None"}</p>`;
     document.getElementById("tournament-join-form").classList.remove("hidden");
   } catch (error) {

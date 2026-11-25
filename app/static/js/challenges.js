@@ -2,13 +2,21 @@ import { escapeHtml, request } from "./api.js";
 import { toast } from "./ui.js";
 
 const settings = await request("/api/config");
+const skillText = (raw) => {
+  const codes = (raw || "").split(",").filter(Boolean);
+  if (!codes.length) return "All";
+  return codes.map((code) => {
+    const skill = settings.skills.find((item) => item.code === code);
+    return skill ? `${skill.icon || "✨"} ${skill.label}` : code;
+  }).join(", ");
+};
 
 const skillOptions = document.getElementById("skill-options");
 if (skillOptions) {
-  skillOptions.innerHTML = settings.skills.map(({ code, label }) => `
+  skillOptions.innerHTML = settings.skills.map(({ code, label, icon }) => `
     <label class="label cursor-pointer gap-2 border border-base-300 rounded px-2">
       <input type="checkbox" class="checkbox checkbox-warning checkbox-sm" name="skills" value="${escapeHtml(code)}" checked />
-      <span class="label-text text-xs">${escapeHtml(label)}</span>
+      <span class="label-text text-xs">${escapeHtml(icon || "✨")} ${escapeHtml(label)}</span>
     </label>`).join("");
 }
 
@@ -63,7 +71,7 @@ if (searchForm) {
     const container = document.getElementById("challenge-details");
     try {
       const challenge = await request(`/api/challenges/${key}`);
-      container.innerHTML = `<div class="alert"><div><p><b>Status:</b> ${escapeHtml(challenge.status)}</p><p><b>Letters:</b> ${escapeHtml(challenge.allowed_letters)}</p><p><b>Skills:</b> ${escapeHtml(challenge.skills || "All")}</p><a class="btn btn-warning btn-sm mt-3" href="/challenge/join?key=${encodeURIComponent(challenge.key)}">Join</a></div></div>`;
+      container.innerHTML = `<div class="alert"><div><p><b>Status:</b> ${escapeHtml(challenge.status)}</p><p><b>Letters:</b> ${escapeHtml(challenge.allowed_letters)}</p><p><b>Skills:</b> ${escapeHtml(skillText(challenge.skills))}</p><a class="btn btn-warning btn-sm mt-3" href="/challenge/join?key=${encodeURIComponent(challenge.key)}">Join</a></div></div>`;
     } catch (error) {
       container.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
     }

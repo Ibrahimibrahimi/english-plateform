@@ -1,5 +1,7 @@
 import json
-from datetime import UTC, datetime
+import secrets
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from flask import Blueprint, abort, g, jsonify, request
 from sqlalchemy import func
@@ -8,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from app import configs
 from app.auth import (
     avatar_info,
+    current_user,
     public_profile,
     public_user,
     require_admin,
@@ -30,14 +33,22 @@ from app.game.tournaments import create_tournament as build_tournament
 from app.game.words import is_valid_word
 from app.models import (
     Challenge,
+    FriendRequest,
     Match,
     MatchParticipant,
     Notification,
+    RematchOffer,
     Tournament,
     TournamentParticipant,
     User,
 )
-from app.validation import clean_avatar, clean_key, clean_search, clean_text
+from app.validation import (
+    clean_avatar,
+    clean_avatar_upload,
+    clean_key,
+    clean_search,
+    clean_text,
+)
 
 router = Blueprint("api", __name__, url_prefix="/api")
 
@@ -45,6 +56,16 @@ router = Blueprint("api", __name__, url_prefix="/api")
 def body():
     payload = request.get_json(silent=True)
     return payload if isinstance(payload, dict) else {}
+
+
+def _remove_avatar_file(user_id: int, filename: str | None) -> None:
+    if not filename or "/" in filename or "\\" in filename:
+        return
+    if not filename.startswith(f"avatar-{user_id}-"):
+        return
+    if Path(filename).suffix.lstrip(".") not in configs.AVATAR_UPLOAD_EXTENSIONS:
+        return
+    (configs.UPLOAD_DIR / filename).unlink(missing_ok=True)
 
 
 def _notify(db, user_id: int, kind: str, message: str, link: str, data: dict | None = None) -> Notification:
@@ -85,6 +106,56 @@ def _notification_json(entry: Notification) -> dict:
     }
 
 
+def _friend_request(db, first_id: int, second_id: int) -> FriendRequest | None:
+    return (
+        db.query(FriendRequest)
+        .filter(
+            ((FriendRequest.from_id == first_id) & (FriendRequest.to_id == second_id))
+            | ((FriendRequest.from_id == second_id) & (FriendRequest.to_id == first_id))
+        )
+        .order_by(FriendRequest.id.desc())
+        .first()
+    )
+
+
+def _friend_status(db, viewer_id: int | None, other_id: int) -> str:
+    if viewer_id is None or viewer_id == other_id:
+        return "self" if viewer_id == other_id else "none"
+    request_row = _friend_request(db, viewer_id, other_id)
+    if request_row is None or request_row.status == configs.FRIEND_STATUS_DECLINED:
+        return "none"
+    if request_row.status == configs.FRIEND_STATUS_ACCEPTED:
+        return "friends"
+    return "incoming" if request_row.to_id == viewer_id else "outgoing"
+
+
+def _friend_request_json(db, request_row: FriendRequest, viewer_id: int) -> dict:
+    other_id = request_row.to_id if request_row.from_id == viewer_id else request_row.from_id
+    other = db.get(User, other_id)
+    return {
+        "id": request_row.id,
+        "status": request_row.status,
+        "direction": "outgoing" if request_row.from_id == viewer_id else "incoming",
+        "user": public_profile(other) if other else None,
+        "created_at": request_row.created_at.isoformat() if request_row.created_at else None,
+    }
+
+
+def _rematch_json(db, offer: RematchOffer, viewer_id: int) -> dict:
+    sender = db.get(User, offer.from_id)
+    new_match = db.get(Match, offer.new_match_id) if offer.new_match_id else None
+    return {
+        "id": offer.id,
+        "status": offer.status,
+        "direction": "outgoing" if offer.from_id == viewer_id else "incoming",
+        "from": public_profile(sender) if sender else None,
+        "can_accept": offer.to_id == viewer_id and offer.status == configs.REMATCH_STATUS_PENDING,
+        "new_match": _match_info(new_match) if new_match else None,
+        "url": f"/playing/{new_match.id}" if new_match else None,
+        "expires_at": offer.expires_at.isoformat() if offer.expires_at else None,
+    }
+
+
 def _match_info(match: Match) -> dict:
     return {
         "id": match.id,
@@ -116,9 +187,13 @@ def _create_match(db, user_ids: list[int], letters: str, skills: str, mode: str,
 def public_config():
     """Public settings so the browser never needs its own copy of the rules."""
     return jsonify({
-        "skills": [{"code": code, "label": label} for code, label in configs.SKILLS.items()],
+        "skills": [
+            {"code": code, "label": label, "icon": configs.SKILL_ICONS.get(code, "✨")}
+            for code, label in configs.SKILLS.items()
+        ],
         "avatars": configs.AVATARS,
         "default_avatar": configs.DEFAULT_AVATAR,
+        "max_avatar_bytes": configs.AVATAR_UPLOAD_MAX_BYTES,
         "default_letters": configs.DEFAULT_LETTERS,
         "challenge_min_letters": configs.CHALLENGE_MIN_LETTERS,
         "challenge_max_letters": configs.CHALLENGE_MAX_LETTERS,
@@ -156,8 +231,188 @@ def update_me():
         user.username = username
     if "avatar" in payload:
         user.avatar = clean_avatar(payload["avatar"])
+        _remove_avatar_file(user.id, user.avatar_image)
+        user.avatar_image = None
     db.commit()
     return jsonify(public_user(user))
+
+
+@router.post("/me/avatar")
+def upload_avatar():
+    user = require_user()
+    data, extension = clean_avatar_upload(request.files.get("image"))
+    configs.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"avatar-{user.id}-{secrets.token_hex(12)}.{extension}"
+    (configs.UPLOAD_DIR / filename).write_bytes(data)
+    previous = user.avatar_image
+    user.avatar_image = filename
+    g.db.commit()
+    _remove_avatar_file(user.id, previous)
+    return jsonify(public_user(user))
+
+
+@router.get("/friends/count")
+def friend_request_count():
+    db = g.db
+    user = require_user()
+    count = db.query(func.count(FriendRequest.id)).filter(
+        FriendRequest.to_id == user.id,
+        FriendRequest.status == configs.FRIEND_STATUS_PENDING,
+    ).scalar()
+    return jsonify({"count": count})
+
+
+@router.get("/friends")
+def list_friends():
+    db = g.db
+    user = require_user()
+    accepted = (
+        db.query(FriendRequest)
+        .filter(
+            FriendRequest.status == configs.FRIEND_STATUS_ACCEPTED,
+            (FriendRequest.from_id == user.id) | (FriendRequest.to_id == user.id),
+        )
+        .all()
+    )
+    friend_ids = [row.to_id if row.from_id == user.id else row.from_id for row in accepted]
+    friends = (
+        db.query(User)
+        .filter(User.id.in_(friend_ids), User.status == "active")
+        .order_by(User.username)
+        .all()
+    )
+    incoming = (
+        db.query(FriendRequest)
+        .filter(
+            FriendRequest.to_id == user.id,
+            FriendRequest.status == configs.FRIEND_STATUS_PENDING,
+        )
+        .order_by(FriendRequest.id.desc())
+        .all()
+    )
+    outgoing = (
+        db.query(FriendRequest)
+        .filter(
+            FriendRequest.from_id == user.id,
+            FriendRequest.status == configs.FRIEND_STATUS_PENDING,
+        )
+        .order_by(FriendRequest.id.desc())
+        .all()
+    )
+    return jsonify({
+        "friends": [public_profile(friend) for friend in friends],
+        "incoming": [_friend_request_json(db, row, user.id) for row in incoming],
+        "outgoing": [_friend_request_json(db, row, user.id) for row in outgoing],
+    })
+
+
+@router.post("/friends/requests")
+def send_friend_request():
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    try:
+        target_id = int(body().get("user_id"))
+    except (TypeError, ValueError):
+        abort(400, description="Invalid player")
+    if target_id == user.id:
+        abort(400, description="You cannot friend yourself")
+    target = db.get(User, target_id)
+    if target is None or target.status != "active":
+        abort(404, description="Player not found")
+
+    existing = _friend_request(db, user.id, target_id)
+    if existing and existing.status == configs.FRIEND_STATUS_ACCEPTED:
+        abort(409, description="You are already friends")
+    if existing and existing.status == configs.FRIEND_STATUS_PENDING:
+        abort(409, description="A friend request is already pending")
+    if existing:
+        existing.from_id = user.id
+        existing.to_id = target_id
+        existing.status = configs.FRIEND_STATUS_PENDING
+        existing.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    else:
+        existing = FriendRequest(from_id=user.id, to_id=target_id)
+        db.add(existing)
+    db.flush()
+    _notify(
+        db,
+        target_id,
+        configs.NOTIFICATION_FRIEND_REQUEST_RECEIVED,
+        f"{user.username} sent you a friend request",
+        "/friends",
+        {"request_id": existing.id, "from_id": user.id},
+    )
+    db.commit()
+    return jsonify(_friend_request_json(db, existing, user.id)), 201
+
+
+@router.post("/friends/requests/<int:request_id>/accept")
+def accept_friend_request(request_id: int):
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    request_row = db.get(FriendRequest, request_id)
+    if request_row is None:
+        abort(404, description="Friend request not found")
+    if request_row.to_id != user.id:
+        abort(403, description="This request is not for you")
+    if request_row.status != configs.FRIEND_STATUS_PENDING:
+        abort(409, description="Friend request is no longer pending")
+    request_row.status = configs.FRIEND_STATUS_ACCEPTED
+    request_row.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    sender = db.get(User, request_row.from_id)
+    _notify(
+        db,
+        request_row.from_id,
+        configs.NOTIFICATION_FRIEND_REQUEST_ACCEPTED,
+        f"{user.username} accepted your friend request",
+        "/friends",
+        {"request_id": request_row.id, "user_id": user.id},
+    )
+    db.commit()
+    return jsonify({"id": request_row.id, "status": request_row.status, "friend": public_profile(sender) if sender else None})
+
+
+@router.post("/friends/requests/<int:request_id>/decline")
+def decline_friend_request(request_id: int):
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    request_row = db.get(FriendRequest, request_id)
+    if request_row is None:
+        abort(404, description="Friend request not found")
+    if request_row.to_id != user.id:
+        abort(403, description="This request is not for you")
+    if request_row.status != configs.FRIEND_STATUS_PENDING:
+        abort(409, description="Friend request is no longer pending")
+    request_row.status = configs.FRIEND_STATUS_DECLINED
+    request_row.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    sender = db.get(User, request_row.from_id)
+    _notify(
+        db,
+        request_row.from_id,
+        configs.NOTIFICATION_FRIEND_REQUEST_DECLINED,
+        f"{user.username} declined your friend request",
+        "/friends",
+        {"request_id": request_row.id, "user_id": user.id},
+    )
+    db.commit()
+    return jsonify({"id": request_row.id, "status": request_row.status, "user": public_profile(sender) if sender else None})
+
+
+@router.delete("/friends/<int:user_id>")
+def remove_friend(user_id: int):
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    request_row = _friend_request(db, user.id, user_id)
+    if request_row is None or request_row.status != configs.FRIEND_STATUS_ACCEPTED:
+        abort(404, description="Friend not found")
+    request_row.status = configs.FRIEND_STATUS_DECLINED
+    request_row.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    db.commit()
+    return jsonify({"status": "ok"})
 
 
 @router.get("/players/online")
@@ -175,6 +430,7 @@ def online_players():
         {
             **public_profile(player),
             "online": True,
+            "friend_status": _friend_status(db, user.id, player.id),
             "points": player.lifetime_learning_points,
         }
         for player in players
@@ -417,7 +673,12 @@ def tournament_details(tournament_id: int):
         "max_players": tournament.max_players,
         "allowed_letters": tournament.allowed_letters,
         "skills": [
-            {"code": code, "label": configs.SKILLS[code]} for code in skill_pool(tournament.skills)
+            {
+                "code": code,
+                "label": configs.SKILLS[code],
+                "icon": configs.SKILL_ICONS.get(code, "✨"),
+            }
+            for code in skill_pool(tournament.skills)
         ],
         "participants": [
             {"id": user.id, "username": user.username, "status": status} for user, status in participants
@@ -534,6 +795,167 @@ def match_snapshot(match_id: int):
     return jsonify({"match": _match_info(match), "state": state})
 
 
+def _rematch_context(db, match_id: int, user: User):
+    match = db.get(Match, match_id)
+    if match is None:
+        abort(404, description="Match not found")
+    if match.mode != configs.CHALLENGE_MODE:
+        abort(403, description="Rematches are only available for challenges")
+    if match.status != "finished":
+        abort(409, description="The match is not over yet")
+    participant_ids = [
+        row.user_id
+        for row in db.query(MatchParticipant)
+        .filter(MatchParticipant.match_id == match_id)
+        .all()
+    ]
+    if user.id not in participant_ids or len(participant_ids) != 2:
+        abort(403, description="You are not in this challenge")
+    opponent_id = next(uid for uid in participant_ids if uid != user.id)
+    offer = (
+        db.query(RematchOffer)
+        .filter(
+            RematchOffer.match_id == match_id,
+            ((RematchOffer.from_id == user.id) & (RematchOffer.to_id == opponent_id))
+            | ((RematchOffer.from_id == opponent_id) & (RematchOffer.to_id == user.id)),
+        )
+        .order_by(RematchOffer.id.desc())
+        .first()
+    )
+    return match, opponent_id, offer
+
+
+def _expire_rematch(db, offer: RematchOffer | None) -> bool:
+    if offer is None or offer.status != configs.REMATCH_STATUS_PENDING:
+        return False
+    expires = offer.expires_at.replace(tzinfo=UTC) if offer.expires_at else None
+    if expires and expires > datetime.now(UTC):
+        return False
+    offer.status = configs.REMATCH_STATUS_EXPIRED
+    offer.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    db.commit()
+    return True
+
+
+@router.get("/matches/<int:match_id>/rematch")
+def get_rematch(match_id: int):
+    db = g.db
+    user = require_user()
+    match, _opponent_id, offer = _rematch_context(db, match_id, user)
+    _expire_rematch(db, offer)
+    return jsonify({
+        "mode": match.mode,
+        "offer": _rematch_json(db, offer, user.id) if offer else None,
+    })
+
+
+@router.post("/matches/<int:match_id>/rematch")
+def offer_rematch(match_id: int):
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    _match, opponent_id, offer = _rematch_context(db, match_id, user)
+    if offer and offer.status == configs.REMATCH_STATUS_ACCEPTED:
+        abort(409, description="A rematch has already been created")
+    if offer and offer.status == configs.REMATCH_STATUS_PENDING:
+        return jsonify(_rematch_json(db, offer, user.id))
+
+    if offer is None:
+        offer = RematchOffer(match_id=match_id, from_id=user.id, to_id=opponent_id)
+        db.add(offer)
+    else:
+        offer.from_id = user.id
+        offer.to_id = opponent_id
+        offer.expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=configs.REMATCH_TTL_HOURS)
+    offer.status = configs.REMATCH_STATUS_PENDING
+    offer.new_match_id = None
+    offer.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    db.flush()
+    _notify(
+        db,
+        opponent_id,
+        configs.NOTIFICATION_REMATCH_OFFERED,
+        f"{user.username} wants a rematch",
+        f"/playing/{match_id}",
+        {"match_id": match_id, "offer_id": offer.id},
+    )
+    db.commit()
+    return jsonify(_rematch_json(db, offer, user.id)), 201
+
+
+@router.post("/matches/<int:match_id>/rematch/accept")
+def accept_rematch(match_id: int):
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    match, _opponent_id, offer = _rematch_context(db, match_id, user)
+    if offer is None:
+        abort(404, description="No rematch offer found")
+    if offer.to_id != user.id:
+        abort(403, description="This rematch is not for you")
+    if offer.status != configs.REMATCH_STATUS_PENDING:
+        abort(409, description="Rematch offer is no longer pending")
+    if _expire_rematch(db, offer):
+        abort(410, description="Rematch offer expired")
+    if offer.new_match_id and db.get(Match, offer.new_match_id) is not None:
+        abort(409, description="Rematch already created")
+
+    new_match = _create_match(
+        db,
+        [offer.from_id, offer.to_id],
+        match.allowed_letters,
+        match.skills,
+        configs.CHALLENGE_MODE,
+    )
+    offer.status = configs.REMATCH_STATUS_ACCEPTED
+    offer.new_match_id = new_match.id
+    offer.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    db.flush()
+    _notify(
+        db,
+        offer.from_id,
+        configs.NOTIFICATION_REMATCH_ACCEPTED,
+        f"{user.username} accepted your rematch",
+        f"/playing/{new_match.id}",
+        {"match_id": new_match.id, "offer_id": offer.id},
+    )
+    db.commit()
+    register_match(db, new_match)
+    return jsonify({
+        **_rematch_json(db, offer, user.id),
+        "match": _match_info(new_match),
+    })
+
+
+@router.post("/matches/<int:match_id>/rematch/decline")
+def decline_rematch(match_id: int):
+    db = g.db
+    begin_immediate(db)
+    user = require_user()
+    _match, _opponent_id, offer = _rematch_context(db, match_id, user)
+    if offer is None:
+        abort(404, description="No rematch offer found")
+    if offer.to_id != user.id:
+        abort(403, description="This rematch is not for you")
+    if offer.status != configs.REMATCH_STATUS_PENDING:
+        abort(409, description="Rematch offer is no longer pending")
+    if _expire_rematch(db, offer):
+        abort(410, description="Rematch offer expired")
+    offer.status = configs.REMATCH_STATUS_DECLINED
+    offer.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    db.flush()
+    _notify(
+        db,
+        offer.from_id,
+        configs.NOTIFICATION_REMATCH_DECLINED,
+        f"{user.username} declined your rematch",
+        f"/playing/{match_id}",
+        {"match_id": match_id, "offer_id": offer.id},
+    )
+    db.commit()
+    return jsonify(_rematch_json(db, offer, user.id))
+
+
 @router.get("/me/statistics")
 def statistics():
     db = g.db
@@ -617,7 +1039,11 @@ def player_profile(user_id: int):
     user = db.query(User).filter(User.id == user_id, User.status == "active").first()
     if user is None:
         abort(404, description="Player not found")
-    return jsonify(public_profile(user))
+    viewer = current_user()
+    return jsonify({
+        **public_profile(user),
+        "friend_status": _friend_status(db, viewer.id if viewer else None, user.id),
+    })
 
 
 @router.get("/notifications")

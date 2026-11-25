@@ -1,5 +1,7 @@
 export async function request(path, options = {}) {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const headers = options.body instanceof FormData
+    ? { ...(options.headers || {}) }
+    : { "Content-Type": "application/json", ...(options.headers || {}) };
   const response = await fetch(path, { credentials: "same-origin", ...options, headers });
   let data = null;
   try {
@@ -39,4 +41,11 @@ export function escapeHtml(value) {
     '"': "&quot;",
     "'": "&#39;",
   })[char]);
+}
+
+export function avatarHtml(avatar, label, size = "w-10") {
+  const inner = avatar?.image_url
+    ? `<img src="${escapeHtml(avatar.image_url)}" alt="${escapeHtml(label)} avatar" class="h-full w-full object-cover" />`
+    : `<span style="background:${escapeHtml(avatar?.color || "#f59e0b")}">${escapeHtml(avatar?.emoji || "🎮")}</span>`;
+  return `<div class="avatar avatar-placeholder"><div class="${size} rounded-full overflow-hidden flex items-center justify-center text-xl">${inner}</div></div>`;
 }

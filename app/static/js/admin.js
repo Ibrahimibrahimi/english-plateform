@@ -5,7 +5,7 @@ const settings = await request("/api/config");
 
 const options = document.getElementById("skill-options");
 if (options) {
-  options.innerHTML = settings.skills.map(({ code, label }) => `<label class="label cursor-pointer gap-2 border border-base-300 rounded px-2"><input type="checkbox" class="checkbox checkbox-warning checkbox-sm" name="skills" value="${escapeHtml(code)}" checked /><span class="label-text text-xs">${escapeHtml(label)}</span></label>`).join("");
+  options.innerHTML = settings.skills.map(({ code, label, icon }) => `<label class="label cursor-pointer gap-2 border border-base-300 rounded px-2"><input type="checkbox" class="checkbox checkbox-warning checkbox-sm" name="skills" value="${escapeHtml(code)}" checked /><span class="label-text text-xs">${escapeHtml(icon || "✨")} ${escapeHtml(label)}</span></label>`).join("");
 }
 
 async function loadLetters() {

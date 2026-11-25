@@ -66,6 +66,20 @@
   </section>
 
   <div id="result" class="hidden alert alert-success text-lg font-bold"></div>
+  <section id="rematch-panel" class="hidden tank-card rounded-box bg-base-100 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="card-title text-lg">Rematch</h2>
+        <p id="rematch-message" class="text-sm opacity-70">Challenge the same player again.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="rematch-btn" class="btn btn-warning btn-sm">Request rematch</button>
+        <button id="rematch-accept-btn" class="btn btn-success btn-sm hidden">Accept rematch</button>
+        <button id="rematch-decline-btn" class="btn btn-ghost btn-sm hidden">Decline</button>
+        <a id="rematch-link" class="btn btn-outline btn-sm hidden" href="#">Play rematch</a>
+      </div>
+    </div>
+  </section>
   <section class="tank-card rounded-box bg-base-100 p-4">
     <h2 class="card-title text-lg">Battle log</h2>
     <ul id="event-log" class="text-sm mt-2 max-h-48 overflow-y-auto"></ul>

@@ -26,16 +26,117 @@ if (meta) {
   let ended = false;
   let retry = 0;
   let reconnectTimer = null;
+  let isChallenge = false;
+  let finishedAtLoad = false;
+  let rematchShown = false;
+  let rematchRetries = 0;
+  const rematchPanel = document.getElementById("rematch-panel");
+  const rematchMessage = document.getElementById("rematch-message");
+  const rematchButton = document.getElementById("rematch-btn");
+  const rematchAccept = document.getElementById("rematch-accept-btn");
+  const rematchDecline = document.getElementById("rematch-decline-btn");
+  const rematchLink = document.getElementById("rematch-link");
 
   try {
     myId = (await request("/api/auth/me")).id;
   } catch (error) {
     toast("Log in to play this match", "error");
   }
+  try {
+    const snapshot = await request(`/api/matches/${matchId}`);
+    isChallenge = snapshot.match.mode === "challenge";
+    finishedAtLoad = snapshot.match.status === "finished";
+  } catch (error) {
+    toast(error.message, "error");
+  }
 
   const setControlsEnabled = (enabled) => {
     for (const control of controls) control.disabled = !enabled;
   };
+
+  const hideRematchActions = () => {
+    [rematchButton, rematchAccept, rematchDecline, rematchLink].forEach((element) => {
+      element?.classList.add("hidden");
+    });
+  };
+
+  const refreshRematch = async () => {
+    try {
+      const data = await request(`/api/matches/${matchId}/rematch`);
+      const offer = data.offer;
+      hideRematchActions();
+      if (!offer) {
+        rematchMessage.textContent = "Challenge the same player again.";
+        rematchButton.classList.remove("hidden");
+        return;
+      }
+      if (offer.status === "accepted" && offer.url) {
+        rematchMessage.textContent = "Rematch ready. Join when you are.";
+        rematchLink.href = offer.url;
+        rematchLink.classList.remove("hidden");
+        return;
+      }
+      if (offer.status === "pending") {
+        if (offer.can_accept) {
+          rematchMessage.textContent = `${offer.from?.username || "Opponent"} wants a rematch.`;
+          rematchAccept.classList.remove("hidden");
+          rematchDecline.classList.remove("hidden");
+        } else {
+          rematchMessage.textContent = "Rematch request sent. Waiting for the other player.";
+        }
+        return;
+      }
+      rematchMessage.textContent = offer.status === "declined"
+        ? "Rematch declined. You can request another."
+        : "Rematch offer expired. You can request another.";
+      rematchButton.classList.remove("hidden");
+    } catch (error) {
+      if (/not over yet/i.test(error.message) && rematchRetries < 10) {
+        rematchRetries += 1;
+        setTimeout(refreshRematch, 300);
+        return;
+      }
+      toast(error.message, "error");
+    }
+  };
+
+  const showRematch = () => {
+    if (!isChallenge || rematchShown) return;
+    rematchShown = true;
+    rematchPanel?.classList.remove("hidden");
+    refreshRematch();
+  };
+
+  rematchButton?.addEventListener("click", async () => {
+    try {
+      await request(`/api/matches/${matchId}/rematch`, { method: "POST", body: JSON.stringify({}) });
+      toast("Rematch requested", "success");
+      refreshRematch();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+  rematchAccept?.addEventListener("click", async () => {
+    try {
+      const data = await request(`/api/matches/${matchId}/rematch/accept`, { method: "POST", body: JSON.stringify({}) });
+      toast("Rematch accepted", "success");
+      if (data.url) location.href = data.url;
+      else refreshRematch();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+  rematchDecline?.addEventListener("click", async () => {
+    try {
+      await request(`/api/matches/${matchId}/rematch/decline`, { method: "POST", body: JSON.stringify({}) });
+      toast("Rematch declined", "info");
+      refreshRematch();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+
+  if (finishedAtLoad) showRematch();
 
   const addLog = (text) => {
     const item = document.createElement("li");
@@ -62,7 +163,9 @@ if (meta) {
     document.getElementById(`health-bar-${side}`).style.width = `${(player.health / Math.max(1, player.max_health)) * 100}%`;
     document.getElementById(`armor-bar-${side}`).style.width = `${(player.armor / Math.max(1, player.max_armor)) * 100}%`;
     document.getElementById(`attack-${side}`).textContent = player.attack;
-    document.getElementById(`skill-${side}`).textContent = player.skill_label || "-";
+    document.getElementById(`skill-${side}`).textContent = player.skill_label
+      ? `${player.skill_icon || "✨"} ${player.skill_label}`
+      : "-";
     document.getElementById(`status-${side}`).textContent = player.connected ? (player.blocked ? "Blocked" : "") : "Disconnected";
     fx.sync(side, player);
   };
@@ -97,6 +200,7 @@ if (meta) {
           result.textContent = "Defeat. Better spelling next round.";
         }
       }
+      showRematch();
       return;
     }
     setControlsEnabled(true);
@@ -185,6 +289,7 @@ if (meta) {
           }
         });
         addLog(`Match ended: ${message.payload.reason}`);
+        showRematch();
       }
     });
   };
