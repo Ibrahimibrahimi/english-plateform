@@ -1,12 +1,16 @@
 {% extends "base.html" %}
+{% from "_components.html" import page_head %}
 {% block title %}SpellBattle | Player profile{% endblock %}
 {% block page %}player-profile{% endblock %}
 {% block content %}
-<div id="player-meta" data-id="{{ profile_id }}" class="mx-auto max-w-3xl">
-  <div class="card bg-base-100 border border-base-300">
-    <div class="card-body items-center text-center">
-      <span class="loading loading-spinner loading-md"></span>
-    </div>
+<div class="page-shell max-w-4xl">
+  {% call page_head("Player profile", "Stats, record and friend options.", "Player card") %}
+  <a href="/players" class="btn btn-ghost gap-2">Back to players</a>
+  {% endcall %}
+  <div id="player-meta" data-id="{{ profile_id }}">
+    <section class="panel panel-pad fade-in">
+      <div class="flex justify-center"><span class="loading loading-spinner loading-md"></span></div>
+    </section>
   </div>
 </div>
 {% endblock %}

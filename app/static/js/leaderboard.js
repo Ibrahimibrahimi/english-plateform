@@ -1,12 +1,14 @@
 import { avatarHtml, escapeHtml, request } from "./api.js";
+import { reveal } from "./motion.js";
 
 const podium = document.getElementById("medal-podium");
 const body = document.getElementById("leaderboard-body");
+const empty = "<div class='empty-state sm:col-span-3'><strong>No players yet</strong><span class='text-sm'>Be the first to earn points.</span></div>";
 
 const medals = {
-  1: { emoji: "🥇", color: "#f5c518", ring: "ring-warning" },
-  2: { emoji: "🥈", color: "#c0c8d1", ring: "ring-base-content/40" },
-  3: { emoji: "🥉", color: "#cd7f32", ring: "ring-error/50" },
+  1: { label: "1", color: "#f5c518", ring: "ring-warning", badge: "badge-warning" },
+  2: { label: "2", color: "#c0c8d1", ring: "ring-base-content/40", badge: "badge-ghost" },
+  3: { label: "3", color: "#cd7f32", ring: "ring-error/50", badge: "badge-error" },
 };
 
 const avatarFor = (row, size) => avatarHtml(row.avatar, row.username, size);
@@ -22,26 +24,25 @@ try {
           const medal = medals[row.rank];
           const first = row.rank === 1;
           return `
-            <a href="${escapeHtml(row.profile_url)}" class="card bg-base-100 border-2 border-base-300 hover:-translate-y-1 transition ${medal.ring} ring-2 ${first ? "podium-first" : ""}">
-              <div class="card-body items-center text-center gap-2 py-6">
-                <div class="text-4xl">${medal.emoji}</div>
-                ${avatarFor(row, first ? "w-20" : "w-16")}
-                <h3 class="card-title text-lg">${escapeHtml(row.username)}</h3>
-                <p class="text-3xl font-extrabold" style="color:${medal.color}">${row.points}</p>
-                <p class="text-xs opacity-60 uppercase tracking-wide">learning points</p>
-                <p class="text-sm opacity-70">${row.wins} wins · ${row.losses} losses</p>
-                <span class="badge badge-sm">View profile →</span>
-              </div>
+            <a href="${escapeHtml(row.profile_url)}" class="panel panel-pad flex flex-col items-center gap-2 text-center ring-2 transition hover:-translate-y-1 ${medal.ring} ${first ? "podium-first" : ""}">
+              <span class="badge ${medal.badge} badge-lg font-display">${medal.label}</span>
+              ${avatarFor(row, first ? "w-20 text-4xl" : "w-16 text-3xl")}
+              <h3 class="font-display text-lg font-bold">${escapeHtml(row.username)}</h3>
+              <p class="text-3xl font-extrabold" style="color:${medal.color}">${row.points}</p>
+              <p class="text-xs uppercase tracking-wider opacity-60">Learning points</p>
+              <p class="text-sm opacity-70">${row.wins} wins · ${row.losses} losses</p>
+              <span class="badge badge-outline badge-sm">View profile</span>
             </a>`;
         }).join("")
-      : "<div class='alert sm:col-span-3'>No players yet. Be the first to earn points!</div>";
+      : empty;
+    reveal(podium.children);
   }
 
   if (body) {
     body.innerHTML = rows.length
       ? rows.map((row) => `
           <tr class="${row.medal ? "bg-warning/10" : ""}">
-            <th>${row.rank}${row.medal ? " " + medals[row.rank].emoji : ""}</th>
+            <th>${row.rank}</th>
             <td><div class="flex items-center gap-3">${avatarFor(row)}<span class="font-semibold">${escapeHtml(row.username)}</span></div></td>
             <td class="font-extrabold text-warning">${row.points}</td>
             <td>${row.wins} W / ${row.losses} L</td>

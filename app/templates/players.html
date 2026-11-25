@@ -1,11 +1,20 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon, page_head %}
 {% block title %}SpellBattle | Online Players{% endblock %}
 {% block page %}players{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-5xl flex flex-col gap-6">
-  <div class="text-center"><h1 class="text-3xl font-extrabold">Online players</h1><p class="opacity-70 mt-2">Challenge someone to a private 1v1 spelling battle.</p></div>
-  <div id="online-players" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><span class="loading loading-spinner loading-md"></span></div>
-  <div class="text-center"><a href="/challenge/join" class="btn btn-outline">Have a challenge key?</a></div>
+<div class="page-shell flex flex-col gap-5">
+  {% call page_head("Online players", "Challenge someone to a private 1v1 spelling battle.", "Live roster") %}
+  <a href="/challenge/join" class="btn btn-outline gap-2">{{ icon("key", "h-4 w-4") }}Have a challenge key?</a>
+  {% endcall %}
+  <section class="panel panel-pad fade-in">
+    <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("users", "h-5 w-5 text-primary") }}Ready for battle</h2>
+    <div id="online-players" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="skeleton h-36"></div>
+      <div class="skeleton h-36"></div>
+      <div class="skeleton h-36"></div>
+    </div>
+  </section>
 </div>
 {% endblock %}
 {% block scripts %}<script type="module" src="/static/js/players.js"></script>{% endblock %}
