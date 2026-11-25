@@ -12,6 +12,21 @@
     </div>
   </div>
 
+  <section id="arena-stage" class="arena" aria-label="Battle arena">
+    <div class="arena-pts arena-pts-p1"><small id="arena-name-p1"></small><b id="arena-pts-p1">0</b> points</div>
+    <div class="arena-pts arena-pts-p2"><small id="arena-name-p2"></small><b id="arena-pts-p2">0</b> points</div>
+    <div id="arena-lane" class="stage arena-lane"></div>
+    {% for side in ["p1", "p2"] %}
+    <div id="tank-{{ side }}" class="tank tank-{{ side }}">
+      <div class="abar abar-hp"><i id="arena-hp-{{ side }}"></i></div>
+      <div class="abar abar-ar"><i id="arena-ar-{{ side }}"></i></div>
+      <div class="tank-fig"><span class="barrel"></span><span class="turret"></span><span class="hull"></span><span class="tracks"></span></div>
+    </div>
+    {% endfor %}
+    <div id="arena-units"></div>
+    <div id="arena-banner" class="arena-banner"></div>
+  </section>
+
   <div class="grid gap-4 md:grid-cols-2">
     {% for side in ["p1", "p2"] %}
     <section id="card-{{ side }}" class="tank-card rounded-box bg-base-100 p-4">

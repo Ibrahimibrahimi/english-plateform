@@ -1,5 +1,6 @@
 import { request } from "./api.js";
 import { toast } from "./ui.js";
+import { createArenaFx } from "./arena-fx.js";
 
 const meta = document.getElementById("match-meta");
 if (meta) {
@@ -18,6 +19,8 @@ if (meta) {
     document.getElementById("regen-skill-btn"),
   ].filter(Boolean);
 
+  const fx = createArenaFx();
+  const sideById = {}; // user id -> "p1" (me) | "p2" (opponent)
   let myId = null;
   let socket = null;
   let ended = false;
@@ -61,14 +64,15 @@ if (meta) {
     document.getElementById(`attack-${side}`).textContent = player.attack;
     document.getElementById(`skill-${side}`).textContent = player.skill_label || "-";
     document.getElementById(`status-${side}`).textContent = player.connected ? (player.blocked ? "Blocked" : "") : "Disconnected";
+    fx.sync(side, player);
   };
 
   const renderState = (payload) => {
     const players = Object.entries(payload.players).map(([id, player]) => ({ ...player, id: Number(id) }));
     const mine = players.find((player) => player.id === myId) || players[0];
     const opponent = players.find((player) => player.id !== mine?.id);
-    if (mine) renderPlayer(mine, "p1", mine.id === myId);
-    if (opponent) renderPlayer(opponent, "p2", false);
+    if (mine) { sideById[mine.id] = "p1"; renderPlayer(mine, "p1", mine.id === myId); }
+    if (opponent) { sideById[opponent.id] = "p2"; renderPlayer(opponent, "p2", false); }
 
     const round = Math.min(payload.round_index + 1, payload.total_rounds);
     if (payload.status === "waiting") {
@@ -80,6 +84,7 @@ if (meta) {
     }
     if (payload.status === "finished") {
       setControlsEnabled(false);
+      fx.end(payload.winner_id == null ? null : sideById[payload.winner_id]);
       connection.textContent = "Match finished";
       timer.textContent = "0s";
       if (result.classList.contains("hidden")) {
@@ -142,14 +147,20 @@ if (meta) {
       if (message.type === "state") return renderState(message.payload);
       if (message.type === "round_start") {
         addLog(`Round ${message.payload.index + 1} started (${message.payload.letters})`);
+        fx.banner(`Round ${message.payload.index + 1}`);
         return renderLetters(message.payload.letters);
       }
       if (message.type === "word") {
         addLog(`${message.payload.word} (+${message.payload.points})`);
+        // The server only deals damage when the word scored, so only then does a soldier march.
+        if (message.payload.points > 0) fx.attack(sideById[message.payload.user_id], message.payload.word);
         return;
       }
       if (message.type === "event") {
         addLog(message.payload?.message || message.event || "Event");
+        // The server sends each skill/regen event twice; only the copy with a message is animated.
+        fx.event(message.event, sideById[message.user_id], message.payload?.message);
+        if (message.event === "sudden.death") fx.banner("Sudden death");
         return;
       }
       if (message.type === "error") return toast(message.message, "error");
@@ -157,6 +168,11 @@ if (meta) {
         ended = true;
         setControlsEnabled(false);
         clearTimeout(reconnectTimer);
+        // A knockout sends no final state, so sync the closing numbers before the finale.
+        for (const [id, player] of Object.entries(message.payload.players || {})) {
+          if (sideById[id]) fx.sync(sideById[id], player);
+        }
+        fx.end(message.payload.winner_id == null ? null : sideById[message.payload.winner_id]);
         result.classList.remove("hidden");
         if (message.payload.winner_id === null) {
           result.textContent = "Match ended in a draw.";

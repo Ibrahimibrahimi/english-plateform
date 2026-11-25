@@ -20,3 +20,86 @@
     .bar-armor { background: #3b82f6; }
     .letter-tile { font-weight: 800; letter-spacing: .05em; }
 
+
+    /* ---------- Battle arena (animated tanks and soldiers) ---------- */
+    .arena {
+      --fx-red: #e0474c; --fx-blue: #1c7ed6;
+      position: relative; height: 17rem; overflow: hidden;
+      border: 2px solid var(--fx-blue); border-radius: .5rem; background: var(--color-base-100);
+    }
+    .arena::after { content: ""; position: absolute; inset: auto 0 0 0; height: 2.2rem;
+      background: color-mix(in oklab, var(--color-base-content) 9%, transparent); }
+    .arena-pts { position: absolute; top: .6rem; font-weight: 700; line-height: 1.2; }
+    .arena-pts small { display: block; font-weight: 500; opacity: .6; }
+    .arena-pts-p1 { left: .75rem; } .arena-pts-p2 { right: .75rem; text-align: right; }
+    .arena-lane { position: absolute; left: 24%; right: 24%; bottom: 1.4rem; height: 5.2rem;
+      opacity: 0; transition: opacity .3s; pointer-events: none; }
+    .arena-lane.on { opacity: .55; }
+    #arena-units { position: absolute; inset: 0; pointer-events: none; }
+
+    .tank { position: absolute; bottom: 2.2rem; width: clamp(5.5rem, 22%, 9rem); z-index: 2; }
+    .tank-p1 { left: .75rem; --c: var(--fx-red); } .tank-p2 { right: .75rem; --c: var(--fx-blue); }
+    .abar { height: .6rem; border: 2px solid var(--fx-blue); border-radius: .2rem; overflow: hidden;
+      margin-bottom: .25rem; background: color-mix(in oklab, var(--color-base-content) 12%, transparent); }
+    .abar i { display: block; height: 100%; width: 100%; transition: width .45s ease; }
+    .abar-hp i { background: #fcd34d; } .abar-ar i { background: #f9a8b8; }
+    .tank.is-low .abar-hp { animation: fx-blink .6s infinite alternate; }
+
+    .tank-fig { position: relative; height: 4.2rem; transition: filter .2s; }
+    .tank-p2 .tank-fig { transform: scaleX(-1); }
+    .tank-fig span { position: absolute; border: 2px solid var(--c);
+      background: color-mix(in oklab, var(--c) 28%, var(--color-base-100)); }
+    .hull { bottom: .7rem; left: 0; right: 0; height: 1.7rem; border-radius: .4rem; }
+    .turret { bottom: 2.2rem; left: 28%; width: 42%; height: 1.2rem; border-radius: .7rem .7rem .2rem .2rem; }
+    .barrel { bottom: 2.55rem; left: 66%; width: 38%; height: .45rem; border-radius: .2rem; }
+    .tracks { bottom: 0; left: 6%; right: 6%; height: 1rem; border: 0 !important; border-radius: .6rem;
+      background: color-mix(in oklab, var(--color-base-content) 70%, transparent) !important; }
+    .tank-p1.is-fire { animation: fx-recoil-l .22s; } .tank-p2.is-fire { animation: fx-recoil-r .22s; }
+    .tank.is-hit .tank-fig { animation: fx-shake .35s; }
+    .tank.is-heal .tank-fig { filter: drop-shadow(0 0 .6rem #fcd34d); }
+    .tank.is-armor .tank-fig { filter: drop-shadow(0 0 .6rem #f472b6); }
+    .tank.is-winner .tank-fig { animation: fx-bob .5s ease-in-out infinite alternate; }
+    .tank.is-ko .tank-fig { filter: grayscale(.85); rotate: 6deg; translate: 0 .35rem; transition: all .6s; }
+    .tank.is-ko::before { content: "💥"; position: absolute; top: 1.2rem; left: 50%; translate: -50% 0;
+      font-size: 2rem; animation: fx-pop .8s both; }
+
+    .fx-unit { position: absolute; left: 0; bottom: 2.2rem; width: 2.1rem; height: 2.6rem;
+      color: var(--c); will-change: transform; }
+    .fx-p1 { --c: var(--fx-red); } .fx-p2 { --c: var(--fx-blue); }
+    .fx-word { position: absolute; bottom: 100%; left: 50%; translate: -50% .1rem; padding: .15rem .35rem;
+      font: 700 .7rem/1 ui-monospace, monospace; text-transform: uppercase; white-space: nowrap;
+      border: 1px solid var(--c); border-radius: .3rem; background: var(--color-base-100); color: var(--color-base-content); }
+    .fx-man { position: relative; display: flex; flex-direction: column; align-items: center;
+      animation: fx-walk .3s infinite alternate; }
+    .fx-p2 .fx-man { transform: scaleX(-1); }
+    .fx-man i { border: 2px solid var(--c); background: color-mix(in oklab, var(--c) 30%, var(--color-base-100)); }
+    .fx-man i:nth-child(1) { width: .8rem; height: .8rem; border-radius: 50%; }
+    .fx-man i:nth-child(2) { width: 1.1rem; height: 1.1rem; border-radius: .2rem; }
+    .fx-man::after { content: ""; position: absolute; top: 1.15rem; left: 1rem; width: .9rem; height: .2rem; background: var(--c); }
+    .fx-orb .fx-man { display: none; }
+    .fx-orb::before { content: ""; display: block; width: 1.4rem; height: 1.4rem; margin: .9rem auto 0;
+      border-radius: 50%; background: radial-gradient(#fff, #a855f7); box-shadow: 0 0 1rem #a855f7; }
+
+    .fx-spark { position: absolute; bottom: 3.6rem; width: 2.2rem; height: 2.2rem; margin-left: -1.1rem; border-radius: 50%;
+      background: radial-gradient(#fff, #fcd34d 40%, transparent 70%); animation: fx-pop .4s forwards; }
+    .fx-spark-skill { background: radial-gradient(#fff, #a855f7 40%, transparent 70%); }
+    .fx-float { position: absolute; bottom: 7rem; translate: -50% 0; max-width: 12rem; text-align: center;
+      font-weight: 800; animation: fx-rise 1.1s forwards; text-shadow: 0 1px 2px var(--color-base-100); }
+    .fx-dmg { color: #ef4444; font-size: 1.3rem; } .fx-heal { color: #d97706; }
+    .fx-armor { color: #ec4899; } .fx-skill { color: #a855f7; }
+    .arena-banner { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3;
+      font-size: 2rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; opacity: 0; pointer-events: none; }
+    .arena-banner.show { animation: fx-banner 1.4s ease both; }
+
+    @keyframes fx-walk { to { translate: 0 -.2rem; } }
+    @keyframes fx-blink { to { opacity: .45; } }
+    @keyframes fx-shake { 25% { translate: -5px 0; } 75% { translate: 5px 0; } }
+    @keyframes fx-recoil-l { 40% { translate: -7px 0; } }
+    @keyframes fx-recoil-r { 40% { translate: 7px 0; } }
+    @keyframes fx-bob { to { translate: 0 -.4rem; } }
+    @keyframes fx-pop { from { scale: .4; opacity: 1; } to { scale: 2.2; opacity: 0; } }
+    @keyframes fx-rise { to { translate: -50% -2.5rem; opacity: 0; } }
+    @keyframes fx-banner { 0% { opacity: 0; scale: .7; } 25%, 70% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .fx-man, .tank.is-winner .tank-fig, .tank.is-low .abar-hp { animation: none; }
+    }
