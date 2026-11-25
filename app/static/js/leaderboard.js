@@ -6,7 +6,7 @@ const body = document.getElementById("leaderboard-body");
 const empty = "<div class='empty-state sm:col-span-3'><strong>No players yet</strong><span class='text-sm'>Be the first to earn points.</span></div>";
 
 const medals = {
-  1: { label: "1", color: "#f5c518", ring: "ring-warning", badge: "badge-warning" },
+  1: { label: "1", color: "#c27803", ring: "ring-accent", badge: "badge-accent" },
   2: { label: "2", color: "#c0c8d1", ring: "ring-base-content/40", badge: "badge-ghost" },
   3: { label: "3", color: "#cd7f32", ring: "ring-error/50", badge: "badge-error" },
 };
@@ -41,10 +41,10 @@ try {
   if (body) {
     body.innerHTML = rows.length
       ? rows.map((row) => `
-          <tr class="${row.medal ? "bg-warning/10" : ""}">
+          <tr class="${row.medal ? "bg-accent/10" : ""}">
             <th>${row.rank}</th>
             <td><div class="flex items-center gap-3">${avatarFor(row)}<span class="font-semibold">${escapeHtml(row.username)}</span></div></td>
-            <td class="font-extrabold text-warning">${row.points}</td>
+            <td class="font-extrabold text-accent">${row.points}</td>
             <td>${row.wins} W / ${row.losses} L</td>
             <td>${row.tournaments_played}</td>
             <td><a href="${escapeHtml(row.profile_url)}" class="btn btn-ghost btn-xs">Profile</a></td>

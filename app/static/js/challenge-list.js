@@ -23,7 +23,7 @@ if (container) {
           ${avatarHtml(challenge.creator.avatar, challenge.creator.username, "w-12 text-2xl")}
           <div class="min-w-0">
             <h2 class="truncate font-display text-lg font-bold">${escapeHtml(challenge.creator.username)}</h2>
-            <p class="text-xs opacity-70">${challenge.for_you ? "<span class='badge badge-warning badge-sm'>For you</span>" : "<span class='badge badge-ghost badge-sm'>Open</span>"} <span class="font-mono">${escapeHtml(challenge.allowed_letters)}</span></p>
+            <p class="text-xs opacity-70">${challenge.for_you ? "<span class='badge badge-accent badge-sm'>For you</span>" : "<span class='badge badge-ghost badge-sm'>Open</span>"} <span class="font-mono">${escapeHtml(challenge.allowed_letters)}</span></p>
           </div>
         </div>
         <div class="grid grid-cols-2 gap-2 text-xs">
@@ -31,7 +31,7 @@ if (container) {
           <div class="stat-tile"><span>Record</span><strong class="text-xs">${challenge.creator.wins} wins</strong></div>
         </div>
         <div class="mt-auto flex flex-wrap gap-2 pt-2">
-          <button class="btn btn-warning btn-sm join-challenge gap-2" data-key="${escapeHtml(challenge.key)}">Join challenge</button>
+          <button class="btn btn-primary btn-sm join-challenge gap-2" data-key="${escapeHtml(challenge.key)}">Join challenge</button>
           <a class="btn btn-ghost btn-sm" href="${escapeHtml(challenge.creator.profile_url)}">Profile</a>
         </div>
       </div>`).join("") : empty;

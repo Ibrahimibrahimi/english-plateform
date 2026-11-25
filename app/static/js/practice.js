@@ -24,7 +24,7 @@ if (form) {
       clearInterval(timer);
       wordInput.disabled = true;
       button.disabled = true;
-      feedback.className = "min-h-5 text-sm font-semibold text-warning";
+      feedback.className = "min-h-5 text-sm font-semibold text-accent";
       feedback.textContent = `Practice finished with ${score} points`;
       toast(`Practice finished with ${score} points`, "info");
     }

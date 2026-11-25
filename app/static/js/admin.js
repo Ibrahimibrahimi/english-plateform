@@ -56,7 +56,7 @@ async function loadTournaments() {
       <div class="panel panel-pad flex flex-col gap-3">
         <div class="flex items-start justify-between gap-3">
           <h3 class="font-display text-lg font-bold">${escapeHtml(item.name)}</h3>
-          <span class="badge badge-warning badge-sm">${escapeHtml(item.status)}</span>
+          <span class="badge badge-accent badge-sm">${escapeHtml(item.status)}</span>
         </div>
         <p class="text-xs opacity-70">Key: <code class="font-mono">${escapeHtml(item.key)}</code></p>
         <div class="grid grid-cols-2 gap-2">
@@ -65,7 +65,7 @@ async function loadTournaments() {
         </div>
         <div class="mt-auto flex flex-wrap gap-2 pt-2">
           <select class="select select-bordered select-sm" data-id="${item.id}">${settings.tournament_statuses.map((status) => `<option ${status === item.status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}</select>
-          <button class="btn btn-warning btn-sm update-status" data-id="${item.id}">Update</button>
+          <button class="btn btn-primary btn-sm update-status" data-id="${item.id}">Update</button>
         </div>
       </div>`).join("") : empty("No tournaments", "Create one to get started.");
     reveal(list.children);
@@ -96,7 +96,7 @@ async function loadActions() {
     list.innerHTML = rows.length ? `<div class="grid gap-2">${rows.map((row) => `
       <div class="rounded-lg border border-base-300 bg-base-200/40 px-3 py-2">
         <span class="font-mono text-xs opacity-70">${escapeHtml(row.created_at)}</span>
-        <strong class="mx-2 text-warning">${escapeHtml(row.action)}</strong>
+        <strong class="mx-2 text-primary">${escapeHtml(row.action)}</strong>
         <span class="text-sm">${escapeHtml(row.detail)}</span>
       </div>`).join("")}</div>` : empty("No actions yet", "Admin activity will appear here.");
     reveal(list.children);

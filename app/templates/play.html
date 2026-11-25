@@ -8,20 +8,20 @@
   <button data-open-howto class="btn btn-outline gap-2">{{ icon("play", "h-4 w-4") }}How to play</button>
   {% endcall %}
   <div data-stagger class="grid gap-4 md:grid-cols-3">
-    <a href="/play-with-friend" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-warning/60">
-      <span class="grid h-11 w-11 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("friends", "h-5 w-5") }}</span>
+    <a href="/play-with-friend" class="panel panel-pad flex flex-col gap-3 transition hover:border-primary/40">
+      <span class="icon-tile">{{ icon("friends", "h-5 w-5") }}</span>
       <h2 class="font-display text-xl font-bold">Play with a friend</h2>
       <p class="text-sm opacity-70">Challenge an online player or copy a private invite link.</p>
-      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-warning">Open roster {{ icon("arrow", "h-4 w-4") }}</span>
+      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">Open roster {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
-    <a href="/play-challenge" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-primary/60">
-      <span class="grid h-11 w-11 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("key", "h-5 w-5") }}</span>
+    <a href="/play-challenge" class="panel panel-pad flex flex-col gap-3 transition hover:border-primary/40">
+      <span class="icon-tile secondary">{{ icon("key", "h-5 w-5") }}</span>
       <h2 class="font-display text-xl font-bold">Play challenge</h2>
       <p class="text-sm opacity-70">Create a private 1v1 with your own letters, or join by key.</p>
       <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">Set rules {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
-    <a href="/play-tournament" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-success/60">
-      <span class="grid h-11 w-11 place-items-center rounded-xl border border-success/40 bg-success/10 text-success">{{ icon("trophy", "h-5 w-5") }}</span>
+    <a href="/play-tournament" class="panel panel-pad flex flex-col gap-3 transition hover:border-primary/40">
+      <span class="icon-tile success">{{ icon("trophy", "h-5 w-5") }}</span>
       <h2 class="font-display text-xl font-bold">Play tournament</h2>
       <p class="text-sm opacity-70">Find an admin tournament, inspect the rules, and join with a key.</p>
       <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-success">Browse events {{ icon("arrow", "h-4 w-4") }}</span>

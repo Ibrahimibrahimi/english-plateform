@@ -42,7 +42,7 @@ if (createForm) {
             <p class="text-sm opacity-70">Key: <code class="font-mono">${escapeHtml(challenge.key)}</code></p>
             <a class="link link-primary text-sm" href="${escapeHtml(challenge.url)}">${escapeHtml(location.origin + challenge.url)}</a>
           </div>
-          <a class="btn btn-warning btn-sm gap-2" href="/playing/${challenge.match.id}">Open lobby</a>
+          <a class="btn btn-primary btn-sm gap-2" href="/playing/${challenge.match.id}">Open lobby</a>
         </div>`;
       reveal(result);
       toast("Challenge created", "success");
@@ -94,12 +94,12 @@ if (searchForm) {
       const challenge = await request(`/api/challenges/${key}`);
       container.innerHTML = `
         <div class="panel panel-pad">
-          <span class="badge badge-warning badge-outline mb-4">${escapeHtml(challenge.status)}</span>
+          <span class="badge badge-accent badge-outline mb-4">${escapeHtml(challenge.status)}</span>
           <div class="grid gap-3 sm:grid-cols-2">
             <div><span class="text-xs uppercase tracking-wider opacity-60">Letters</span><strong class="mt-1 block font-mono">${escapeHtml(challenge.allowed_letters)}</strong></div>
             <div><span class="text-xs uppercase tracking-wider opacity-60">Skills</span><strong class="mt-1 block text-sm">${escapeHtml(skillText(challenge.skills))}</strong></div>
           </div>
-          <a class="btn btn-warning btn-sm mt-5 gap-2" href="/challenge/join?key=${encodeURIComponent(challenge.key)}">Join challenge</a>
+          <a class="btn btn-primary btn-sm mt-5 gap-2" href="/challenge/join?key=${encodeURIComponent(challenge.key)}">Join challenge</a>
         </div>`;
       reveal(container.children);
     } catch (error) {

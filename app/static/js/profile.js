@@ -113,7 +113,7 @@ if (avatarPicker) {
           body: JSON.stringify({ avatar: button.dataset.key }),
         });
         avatarPicker.querySelectorAll(".avatar-option").forEach((option) => {
-          option.classList.toggle("border-warning", option === button);
+          option.classList.toggle("border-primary", option === button);
           option.classList.toggle("border-transparent", option !== button);
         });
         const preview = document.getElementById("profile-avatar");
@@ -158,7 +158,7 @@ if (avatarForm) {
           navAvatar.style.background = "";
         }
         avatarPicker?.querySelectorAll(".avatar-option").forEach((option) => {
-          option.classList.remove("border-warning");
+          option.classList.remove("border-primary");
           option.classList.add("border-transparent");
         });
         document.getElementById("avatar-feedback").textContent = "Profile picture uploaded.";

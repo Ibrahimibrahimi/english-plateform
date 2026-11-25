@@ -7,8 +7,8 @@
   <div class="page-head fade-in">
     <div>
       <span class="eyebrow">Live duel</span>
-      <h1>Battle <span class="glow-text">#{{ match_id }}</span></h1>
-      <p>Spell faster than your rival. Every valid word becomes firepower.</p>
+      <h1>Battle <span class="text-primary">#{{ match_id }}</span></h1>
+      <p>Spell faster than your rival. Every valid word earns points.</p>
     </div>
     <div class="grid grid-cols-3 gap-2 sm:gap-3">
       <div class="stat-tile"><span>Round</span><strong id="round-label" class="text-sm">Round 0 / 5</strong></div>
@@ -37,10 +37,10 @@
     <section id="card-{{ side }}" class="panel panel-pad fade-in">
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <span class="grid h-8 w-8 place-items-center rounded-lg border border-warning/40 bg-warning/10 text-warning">{{ icon("user" if loop.first else "users", "h-4 w-4") }}</span>
+          <span class="icon-tile">{{ icon("user" if loop.first else "users", "h-4 w-4") }}</span>
           <h2 id="name-{{ side }}" class="font-display text-lg font-bold">Player {{ loop.index }}</h2>
         </div>
-        <span class="badge badge-warning badge-outline">Points <b id="points-{{ side }}">0</b></span>
+        <span class="badge badge-accent badge-outline">Points <b id="points-{{ side }}">0</b></span>
       </div>
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
         <div>
@@ -53,7 +53,7 @@
         </div>
       </div>
       <div class="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-base-300 pt-3 text-sm">
-        <span>Attack <b class="text-warning" id="attack-{{ side }}">6</b></span>
+        <span>Attack <b class="text-accent" id="attack-{{ side }}">6</b></span>
         <span>Skill <b id="skill-{{ side }}">-</b></span>
         <span id="status-{{ side }}" class="badge badge-ghost badge-sm"></span>
       </div>
@@ -64,7 +64,7 @@
   <section class="panel panel-pad fade-in">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <span class="grid h-10 w-10 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("plus", "h-5 w-5") }}</span>
+        <span class="icon-tile">{{ icon("plus", "h-5 w-5") }}</span>
         <div>
           <h2 class="text-xl font-bold">Round letters</h2>
           <p class="text-sm opacity-70">Build a word, then fire.</p>
@@ -75,7 +75,7 @@
     <div id="letters" class="mt-4 flex min-h-12 flex-wrap gap-2"></div>
     <form id="answer-form" class="mt-5 flex flex-col gap-2 sm:flex-row">
       <input id="word-input" class="input input-bordered flex-1 uppercase tracking-[0.2em]" placeholder="Type your word" autocomplete="off" required />
-      <button class="btn btn-warning gap-2 sm:w-36" type="submit">{{ icon("arrow", "h-4 w-4") }}Fire</button>
+      <button class="btn btn-primary gap-2 sm:w-36" type="submit">{{ icon("arrow", "h-4 w-4") }}Fire</button>
     </form>
     <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       <button id="skill-btn" class="skill-button btn btn-outline btn-sm">Use special <kbd class="kbd kbd-sm">Ctrl+0</kbd></button>
@@ -91,7 +91,7 @@
       <p id="connection-detail" class="text-sm opacity-70">Trying to rejoin the arena.</p>
     </div>
     <div class="flex flex-wrap gap-2">
-      <button id="connection-retry" class="btn btn-warning btn-sm hidden">Retry now</button>
+      <button id="connection-retry" class="btn btn-primary btn-sm hidden">Retry now</button>
       <a id="connection-login" class="btn btn-outline btn-sm hidden" href="/profile?next={{ request.path | urlencode }}">Log in</a>
       <a id="connection-back" class="btn btn-ghost btn-sm hidden" href="/play">Back to play</a>
     </div>
@@ -106,7 +106,7 @@
         <p id="result-score" class="mt-2 font-mono text-sm opacity-70"></p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <a id="result-primary" class="btn btn-warning gap-2" href="/play">{{ icon("arrow", "h-4 w-4") }}<span id="result-primary-label">Play again</span></a>
+        <a id="result-primary" class="btn btn-primary gap-2" href="/play">{{ icon("arrow", "h-4 w-4") }}<span id="result-primary-label">Play again</span></a>
         <a id="result-secondary" class="btn btn-outline" href="/leaderboard">Leaderboard</a>
         <a id="result-tournament" class="btn btn-outline hidden" href="/tournament/search">Tournament</a>
       </div>
@@ -120,7 +120,7 @@
         <p id="rematch-message" class="text-sm opacity-70">Challenge the same player again.</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button id="rematch-btn" class="btn btn-warning btn-sm">Request rematch</button>
+        <button id="rematch-btn" class="btn btn-primary btn-sm">Request rematch</button>
         <button id="rematch-accept-btn" class="btn btn-success btn-sm hidden">Accept rematch</button>
         <button id="rematch-decline-btn" class="btn btn-ghost btn-sm hidden">Decline</button>
         <a id="rematch-link" class="btn btn-outline btn-sm hidden" href="#">Play rematch</a>
@@ -130,7 +130,7 @@
 
   <section class="panel panel-pad fade-in">
     <div class="flex items-center gap-3">
-      <span class="grid h-10 w-10 place-items-center rounded-xl border border-secondary/40 bg-secondary/10 text-secondary">{{ icon("chart", "h-5 w-5") }}</span>
+      <span class="icon-tile secondary">{{ icon("chart", "h-5 w-5") }}</span>
       <div>
         <h2 class="text-xl font-bold">Battle log</h2>
         <p class="text-sm opacity-70">Words, skills and turning points.</p>

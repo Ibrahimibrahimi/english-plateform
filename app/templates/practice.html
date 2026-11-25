@@ -14,11 +14,11 @@
         <input id="practice-letters" class="input input-bordered uppercase tracking-[0.2em]" value="AEIOURSTLND" />
         <span class="label-text-alt">Letters may be reused in each word.</span>
       </label>
-      <div class="stat-tile"><span>Score</span><strong id="practice-score" class="text-warning">0</strong></div>
+      <div class="stat-tile"><span>Score</span><strong id="practice-score" class="text-accent">0</strong></div>
     </div>
     <form id="practice-form" class="flex flex-col gap-2 sm:flex-row">
       <input id="practice-word" class="input input-bordered flex-1 uppercase tracking-[0.18em]" placeholder="Your word" autocomplete="off" required />
-      <button class="btn btn-warning gap-2 sm:w-32" type="submit">{{ icon("arrow", "h-4 w-4") }}Submit</button>
+      <button class="btn btn-primary gap-2 sm:w-32" type="submit">{{ icon("arrow", "h-4 w-4") }}Submit</button>
     </form>
     <p id="practice-feedback" class="min-h-5 text-sm" role="status" aria-live="polite"></p>
     <div>
@@ -26,7 +26,7 @@
         <span class="font-semibold uppercase tracking-wider opacity-70">Time remaining</span>
         <span id="practice-time">60s</span>
       </div>
-      <progress id="practice-timer" class="progress progress-warning w-full" value="60" max="60"></progress>
+      <progress id="practice-timer" class="progress progress-primary w-full" value="60" max="60"></progress>
     </div>
     <div>
       <h2 class="mb-2 font-display text-lg font-bold">Accepted words</h2>

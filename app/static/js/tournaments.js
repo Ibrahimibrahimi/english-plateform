@@ -6,12 +6,12 @@ const card = (item) => `
   <div class="panel panel-pad flex flex-col gap-3">
     <div class="flex items-start justify-between gap-3">
       <h3 class="font-display text-lg font-bold">${escapeHtml(item.name)}</h3>
-      <span class="badge badge-warning badge-sm">${escapeHtml(item.status)}</span>
+      <span class="badge badge-accent badge-sm">${escapeHtml(item.status)}</span>
     </div>
     <p class="text-sm opacity-70">${escapeHtml(item.description || "No description")}</p>
     <div class="stat-tile"><span>Players</span><strong>${item.players} / ${item.max_players}</strong></div>
     <p class="font-mono text-xs tracking-widest opacity-70">${escapeHtml(item.allowed_letters)}</p>
-    <a class="btn btn-warning btn-sm mt-auto gap-2" href="/tournament/${item.id}">View / Join</a>
+    <a class="btn btn-primary btn-sm mt-auto gap-2" href="/tournament/${item.id}">View / Join</a>
   </div>`;
 
 async function loadTournaments(search = "") {

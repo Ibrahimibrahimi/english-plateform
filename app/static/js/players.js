@@ -7,7 +7,7 @@ const empty = "<div class='empty-state'><strong>No players online</strong><span 
 function friendAction(player) {
   if (player.friend_status === "self") return "<span class='badge badge-ghost badge-sm'>You</span>";
   if (player.friend_status === "friends") return "<span class='badge badge-success badge-sm'>Friends</span>";
-  if (player.friend_status === "incoming") return "<a class='btn btn-warning btn-sm' href='/friends'>Accept request</a>";
+  if (player.friend_status === "incoming") return "<a class='btn btn-primary btn-sm' href='/friends'>Accept request</a>";
   if (player.friend_status === "outgoing") return "<span class='badge badge-outline badge-sm'>Request sent</span>";
   return `<button class="btn btn-outline btn-sm add-friend" data-id="${player.id}">Add friend</button>`;
 }
@@ -30,7 +30,7 @@ if (container) {
           <div class="stat-tile"><span>Wins</span><strong>${player.wins}</strong></div>
         </div>
         <div class="mt-auto flex flex-wrap gap-2 pt-2">
-          <button class="btn btn-warning btn-sm challenge-player gap-2" data-id="${player.id}">Challenge</button>
+          <button class="btn btn-primary btn-sm challenge-player gap-2" data-id="${player.id}">Challenge</button>
           ${friendAction(player)}
           <a class="btn btn-ghost btn-sm" href="${escapeHtml(player.profile_url)}">Profile</a>
         </div>

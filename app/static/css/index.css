@@ -177,18 +177,11 @@ h1, h2, h3, h4, .font-display {
   background: currentColor;
 }
 
-.glow-text { color: var(--sb-primary); }
-
-.panel,
-.glow-panel {
+.panel {
   border: 1px solid var(--sb-border);
   border-radius: var(--radius-box);
   background: var(--sb-surface);
   box-shadow: var(--sb-shadow);
-}
-
-.glow-panel {
-  border-color: var(--sb-border);
 }
 
 .icon-tile {
@@ -323,18 +316,6 @@ h1, h2, h3, h4, .font-display {
 }
 
 .nav-link svg { width: 1rem; height: 1rem; flex: none; }
-
-.btn-warning {
-  border-color: color-mix(in oklab, var(--sb-accent) 65%, var(--sb-border));
-  transition: transform 0.18s ease, background-color 0.18s ease;
-}
-
-.btn-warning:hover {
-  background-color: color-mix(in oklab, var(--sb-accent) 14%, var(--sb-surface));
-  transform: translateY(-1px);
-}
-
-.btn-warning:active { transform: translateY(0); }
 
 .input,
 .file-input,

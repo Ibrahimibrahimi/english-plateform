@@ -5,20 +5,20 @@
 {% block content %}
 <div class="page-shell flex flex-col gap-5">
   {% call page_head("Administration", "Manage letter sets, tournaments, and the audit trail.", "Control room") %}
-  <a href="/admin/tournaments/new" class="btn btn-warning gap-2">{{ icon("plus", "h-4 w-4") }}New tournament</a>
+  <a href="/admin/tournaments/new" class="btn btn-primary gap-2">{{ icon("plus", "h-4 w-4") }}New tournament</a>
   {% endcall %}
   <div class="grid gap-4 lg:grid-cols-2">
     <section class="panel panel-pad fade-in">
-      <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("plus", "h-5 w-5 text-warning") }}Letter sets</h2>
+      <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("plus", "h-5 w-5 text-primary") }}Letter sets</h2>
       <form id="letterset-form" class="flex flex-col gap-3">
         <input name="name" class="input input-bordered" placeholder="Set name" required />
         <input name="letters" class="input input-bordered uppercase tracking-[0.18em]" placeholder="Unique letters" minlength="{{ min_letters }}" maxlength="{{ max_letters }}" required />
-        <button class="btn btn-warning btn-sm self-start" type="submit">Add letter set</button>
+        <button class="btn btn-primary btn-sm self-start" type="submit">Add letter set</button>
       </form>
       <div id="letterset-list" class="mt-4 text-sm"></div>
     </section>
     <section class="panel panel-pad fade-in">
-      <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("trophy", "h-5 w-5 text-warning") }}Quick tournament</h2>
+      <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("trophy", "h-5 w-5 text-primary") }}Quick tournament</h2>
       <form id="tournament-form" class="flex flex-col gap-3">
         <input name="name" class="input input-bordered" placeholder="Tournament name" required />
         <input name="description" class="input input-bordered" placeholder="Description" />
@@ -27,7 +27,7 @@
           <input name="allowed_letters" class="input input-bordered uppercase tracking-[0.18em]" value="{{ default_letters }}" />
         </div>
         <fieldset id="skill-options" class="flex flex-wrap gap-2"></fieldset>
-        <button class="btn btn-warning btn-sm self-start" type="submit">Create</button>
+        <button class="btn btn-primary btn-sm self-start" type="submit">Create</button>
       </form>
       <div id="tournament-create-result" class="mt-4 text-sm"></div>
     </section>

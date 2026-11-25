@@ -8,14 +8,14 @@
   <a href="/players" class="btn btn-outline gap-2">{{ icon("users", "h-4 w-4") }}All players</a>
   {% endcall %}
   <div data-stagger class="grid gap-4 md:grid-cols-2">
-    <a href="/challenge/create" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-warning/60">
-      <span class="grid h-11 w-11 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("plus", "h-5 w-5") }}</span>
+    <a href="/challenge/create" class="panel panel-pad flex flex-col gap-3 transition hover:border-primary/40">
+      <span class="icon-tile accent">{{ icon("plus", "h-5 w-5") }}</span>
       <h2 class="font-display text-xl font-bold">Create a private challenge</h2>
       <p class="text-sm opacity-70">Choose letters and skills, then share the generated link.</p>
-      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-warning">Start setup {{ icon("arrow", "h-4 w-4") }}</span>
+      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">Start setup {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
-    <a href="/challenge/join" class="panel panel-pad flex flex-col gap-3 transition hover:-translate-y-1 hover:border-primary/60">
-      <span class="grid h-11 w-11 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("key", "h-5 w-5") }}</span>
+    <a href="/challenge/join" class="panel panel-pad flex flex-col gap-3 transition hover:border-primary/40">
+      <span class="icon-tile">{{ icon("key", "h-5 w-5") }}</span>
       <h2 class="font-display text-xl font-bold">Join with a challenge key</h2>
       <p class="text-sm opacity-70">Enter the key a friend sent you.</p>
       <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">Use a key {{ icon("arrow", "h-4 w-4") }}</span>

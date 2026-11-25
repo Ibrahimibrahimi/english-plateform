@@ -30,7 +30,7 @@ if (incoming && outgoing && friends) {
     incoming.innerHTML = data.incoming.length
       ? data.incoming.map((row) => card(
           row.user,
-          `<button class="btn btn-warning btn-sm friend-accept" data-id="${row.id}">Accept</button>
+          `<button class="btn btn-primary btn-sm friend-accept" data-id="${row.id}">Accept</button>
            <button class="btn btn-ghost btn-sm friend-decline" data-id="${row.id}">Decline</button>`,
           "Wants to be friends",
         )).join("")

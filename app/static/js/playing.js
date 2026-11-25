@@ -96,13 +96,13 @@ if (meta) {
     const draw = payload.winner_id == null;
     const won = payload.winner_id === myId;
     result.className = `result-card ${draw ? "result-draw" : won ? "result-win" : "result-loss"}`;
-    resultKicker.textContent = draw ? "Battle complete" : won ? "Arena secured" : "Battle complete";
+    resultKicker.textContent = draw ? "Battle complete" : won ? "Match won" : "Battle complete";
     resultTitle.textContent = draw ? "Draw" : won ? "Victory" : "Defeat";
     resultMessage.textContent = draw
-      ? "Both tanks still stand. The arena calls it a draw."
+      ? "Both players finished level. The match ends in a draw."
       : won
-        ? "Your tank is the last one standing."
-        : "The rival tank held the line. Try a longer word chain next round.";
+        ? "You finished with the higher score."
+        : "Your opponent held the lead. Try a longer word chain next round.";
     resultScore.textContent = mine && opponent ? `${mine.points} - ${opponent.points} points` : "";
     if (isChallenge) {
       resultPrimary.href = "/challenge/list";
@@ -251,7 +251,7 @@ if (meta) {
 
     const round = Math.min(payload.round_index + 1, payload.total_rounds);
     if (payload.status === "waiting") {
-      setConnectionBadge("Waiting for opponent", "badge-warning");
+      setConnectionBadge("Waiting for opponent", "badge-accent");
       roundLabel.textContent = "Lobby";
       timer.textContent = "--";
       setControlsEnabled(false);
@@ -289,17 +289,17 @@ if (meta) {
       if (ended) return;
       setControlsEnabled(false);
       if (event.code === 4401) {
-        setConnectionBadge("Login required", "badge-warning");
+        setConnectionBadge("Login required", "badge-accent");
         showConnection({
           title: "Login required",
-          detail: "Sign in to join this arena and keep your progress.",
+          detail: "Sign in to join this match and keep your progress.",
           needLogin: true,
         });
         toast("Log in to play this match", "error");
         return;
       }
       if (event.code === 4000) {
-        setConnectionBadge("Elsewhere", "badge-warning");
+        setConnectionBadge("Elsewhere", "badge-accent");
         showConnection({
           title: "Opened in another window",
           detail: "This match is now active in a different window.",
@@ -311,13 +311,13 @@ if (meta) {
         setConnectionBadge("Unavailable", "badge-error");
         showConnection({
           title: "Cannot join match",
-          detail: "This arena is no longer available to join.",
+          detail: "This match is no longer available to join.",
           canGoBack: true,
         });
         return;
       }
       const delay = Math.min(8000, 1000 * 2 ** retry);
-      setConnectionBadge("Reconnecting", "badge-warning");
+      setConnectionBadge("Reconnecting", "badge-accent");
       showConnection({
         title: "Connection lost",
         detail: `Trying again in ${Math.ceil(delay / 1000)}s. Your controls are paused until the arena reconnects.`,
