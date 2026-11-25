@@ -1,45 +1,114 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon %}
 {% block title %}SpellBattle | Home{% endblock %}
 {% block page %}home{% endblock %}
 {% block content %}
-<div class="mx-auto flex max-w-5xl flex-col gap-6">
-  <section class="text-center fade-in">
-    <div class="badge badge-warning badge-outline mb-3">1 vs 1 spelling battles</div>
-    <h1 class="text-4xl md:text-5xl font-extrabold">Welcome to the Arena</h1>
-    <p class="mt-4 text-base md:text-lg opacity-80">
-      Build English words from the given letters, earn points and power up your tank.
-      <br />
-      <span class="font-bold badge mt-2">Improve your spelling while you climb the leaderboard!</span>
-    </p>
-  </section>
+<div class="page-shell flex flex-col gap-8">
+  <section class="glow-panel relative overflow-hidden p-6 fade-in sm:p-10">
+    <div class="stage pointer-events-none absolute inset-0 opacity-70"></div>
+    <div class="relative grid items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+      <div>
+        <span id="online-status" class="eyebrow">Checking arena</span>
+        <h1 class="font-display text-4xl font-bold leading-[1.05] sm:text-5xl lg:text-6xl">
+          Build words.<br />
+          <span class="glow-text">Fire tanks.</span><br />
+          Win the arena.
+        </h1>
+        <p class="mt-5 max-w-xl text-base opacity-80 sm:text-lg">
+          SpellBattle turns English practice into a live 1v1 duel. Use the same letters as your opponent,
+          score faster, and spend your points on firepower.
+        </p>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <a href="/play" class="btn btn-warning btn-lg gap-2">{{ icon("arrow", "h-5 w-5") }}Enter the arena</a>
+          <button data-open-howto class="btn btn-outline btn-lg gap-2">{{ icon("play", "h-5 w-5") }}How to play</button>
+        </div>
+        <div class="mt-8 grid max-w-xl grid-cols-3 gap-3">
+          <div class="stat-tile"><span>Mode</span><strong>1v1</strong></div>
+          <div class="stat-tile"><span>Rounds</span><strong>5</strong></div>
+          <div class="stat-tile"><span>Online now</span><strong id="online-count">--</strong></div>
+        </div>
+      </div>
 
-  <section class="stage bg-info/10 rounded-box p-6 md:p-10 fade-in">
-    <h2 class="text-2xl font-extrabold mb-3">How the battle works</h2>
-    <div class="grid gap-3 md:grid-cols-2 text-sm">
-      <p><span class="font-bold">Letters:</span> the admin gives both players the same letters each round.</p>
-      <p><span class="font-bold">Words:</span> use only those letters; reuse is allowed, but each word can be played once per round.</p>
-      <p><span class="font-bold">Points:</span> longer words earn more points and fire your tank.</p>
-      <p><span class="font-bold">Defence:</span> armor absorbs damage first, then health. Zero health ends the match.</p>
-      <p><span class="font-bold">Specials:</span> block, drain, steal, switch or clear skills.</p>
-      <p><span class="font-bold">Winning:</span> knock out the opponent or lead on points when the rounds end.</p>
+      <div class="relative hidden min-h-72 lg:block">
+        <div class="panel absolute left-6 top-4 h-64 w-72 rotate-3 opacity-60"></div>
+        <div class="panel relative z-10 w-80 -rotate-2 p-5 shadow-2xl">
+          <div class="flex items-center justify-between">
+            <span class="badge badge-warning badge-sm">Round 3</span>
+            <span class="font-mono text-sm opacity-70">42s</span>
+          </div>
+          <div class="stage mt-4 grid h-32 place-items-center rounded-xl">
+            <div class="text-center">
+              <div class="font-display text-5xl font-bold tracking-[0.25em] text-warning">TANK</div>
+              <div class="mt-2 font-mono text-xs uppercase tracking-widest opacity-70">+24 damage</div>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center justify-between text-sm">
+            <span class="badge badge-outline">You</span>
+            <div class="h-2 w-36 overflow-hidden rounded-full bg-base-300"><div class="h-full w-3/4 rounded-full bg-success"></div></div>
+            <span class="font-display text-lg font-bold text-warning">240</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-sm">
+            <span class="badge badge-outline">Rival</span>
+            <div class="h-2 w-36 overflow-hidden rounded-full bg-base-300"><div class="h-full w-2/5 rounded-full bg-error"></div></div>
+            <span class="font-display text-lg font-bold">115</span>
+          </div>
+        </div>
+        <div class="panel absolute -bottom-3 right-0 z-20 rotate-6 px-4 py-3 font-display text-sm font-bold shadow-xl">
+          Word chain x4
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 fade-in">
-    <a href="/play-tournament" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
-      <div class="card-body"><h3 class="card-title">🏆 Tournaments</h3><p class="opacity-70 text-sm">Join an admin tournament with a key.</p></div>
-    </a>
-    <a href="/leaderboard" class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition">
-      <div class="card-body"><h3 class="card-title">📊 Leaderboard</h3><p class="opacity-70 text-sm">See who earns the most learning points.</p></div>
-    </a>
-    <button data-open-howto class="card bg-base-100 border border-base-300 hover:border-warning hover:-translate-y-1 transition text-left">
-      <div class="card-body"><h3 class="card-title">❓ How to play</h3><p class="opacity-70 text-sm">The rules in 30 seconds.</p></div>
-    </button>
+  <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <article class="panel panel-pad fade-in">
+      <span class="grid h-9 w-9 place-items-center rounded-lg border border-warning/40 bg-warning/10 text-warning">{{ icon("plus", "h-4 w-4") }}</span>
+      <h2 class="mt-3 text-lg font-bold">01 · Letters</h2>
+      <p class="mt-1 text-sm opacity-70">Both players get the same letters each round.</p>
+    </article>
+    <article class="panel panel-pad fade-in">
+      <span class="grid h-9 w-9 place-items-center rounded-lg border border-primary/40 bg-primary/10 text-primary">{{ icon("users", "h-4 w-4") }}</span>
+      <h2 class="mt-3 text-lg font-bold">02 · Words</h2>
+      <p class="mt-1 text-sm opacity-70">Reuse letters, but never play the same word twice.</p>
+    </article>
+    <article class="panel panel-pad fade-in">
+      <span class="grid h-9 w-9 place-items-center rounded-lg border border-secondary/40 bg-secondary/10 text-secondary">{{ icon("play", "h-4 w-4") }}</span>
+      <h2 class="mt-3 text-lg font-bold">03 · Firepower</h2>
+      <p class="mt-1 text-sm opacity-70">Longer words score more and power your tank.</p>
+    </article>
+    <article class="panel panel-pad fade-in">
+      <span class="grid h-9 w-9 place-items-center rounded-lg border border-success/40 bg-success/10 text-success">{{ icon("trophy", "h-4 w-4") }}</span>
+      <h2 class="mt-3 text-lg font-bold">04 · Victory</h2>
+      <p class="mt-1 text-sm opacity-70">Knock out your rival or lead when rounds end.</p>
+    </article>
   </section>
 
-  <div class="text-center">
-    <a href="/play" class="btn btn-warning btn-lg">Enter the arena</a>
-  </div>
+  <section class="grid gap-4 md:grid-cols-3">
+    <a href="/play-tournament" class="panel panel-pad group fade-in transition hover:-translate-y-1 hover:border-warning/60">
+      <div class="flex items-center justify-between">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("trophy", "h-5 w-5") }}</span>
+        {{ icon("arrow", "h-5 w-5 opacity-40 transition group-hover:translate-x-1 group-hover:text-warning") }}
+      </div>
+      <h2 class="mt-4 text-xl font-bold">Tournaments</h2>
+      <p class="mt-1 text-sm opacity-70">Join an admin tournament with a key and climb the bracket.</p>
+    </a>
+    <a href="/leaderboard" class="panel panel-pad group fade-in transition hover:-translate-y-1 hover:border-primary/60">
+      <div class="flex items-center justify-between">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("chart", "h-5 w-5") }}</span>
+        {{ icon("arrow", "h-5 w-5 opacity-40 transition group-hover:translate-x-1 group-hover:text-primary") }}
+      </div>
+      <h2 class="mt-4 text-xl font-bold">Leaderboard</h2>
+      <p class="mt-1 text-sm opacity-70">See who earns the most learning points.</p>
+    </a>
+    <button data-open-howto class="panel panel-pad group fade-in text-left transition hover:-translate-y-1 hover:border-secondary/60">
+      <div class="flex items-center justify-between">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-secondary/40 bg-secondary/10 text-secondary">{{ icon("play", "h-5 w-5") }}</span>
+        {{ icon("arrow", "h-5 w-5 opacity-40 transition group-hover:translate-x-1 group-hover:text-secondary") }}
+      </div>
+      <h2 class="mt-4 text-xl font-bold">Rules in 30 seconds</h2>
+      <p class="mt-1 text-sm opacity-70">Learn the controls before you enter the arena.</p>
+    </button>
+  </section>
 </div>
 {% endblock %}
 {% block scripts %}<script type="module" src="/static/js/home.js"></script>{% endblock %}

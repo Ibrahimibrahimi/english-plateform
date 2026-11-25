@@ -1,9 +1,12 @@
 import { request } from "./api.js";
 
-const badge = document.querySelector(".badge-warning.badge-outline");
+const count = document.getElementById("online-count");
+const status = document.getElementById("online-status");
 try {
   const players = await request("/api/players/online");
-  if (badge) badge.textContent = `${players.length + 1} players are online`;
+  if (count) count.textContent = String(players.length + 1);
+  if (status) status.textContent = "Arenas active";
 } catch (error) {
-  if (badge) badge.textContent = "Join a battle";
+  if (count) count.textContent = "Live";
+  if (status) status.textContent = "Ready when you are";
 }
