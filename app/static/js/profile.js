@@ -189,11 +189,10 @@ if (historyList) {
       const ctx = canvas.getContext("2d");
       const points = history.slice().reverse().map((match) => match.points);
       const max = Math.max(...points, 10);
-      const amber = getComputedStyle(document.documentElement).getPropertyValue("--sb-amber").trim() || "#f59e0b";
-      ctx.strokeStyle = amber;
+      const primary = getComputedStyle(document.documentElement).getPropertyValue("--sb-primary").trim() || "#0f766e";
+      ctx.strokeStyle = primary;
       ctx.lineWidth = 3;
-      ctx.shadowColor = amber;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 0;
       ctx.beginPath();
       points.forEach((point, index) => {
         const x = (index / Math.max(1, points.length - 1)) * (canvas.width - 20) + 10;
