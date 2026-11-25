@@ -5,9 +5,10 @@ from flask import request
 from flask_sock import Sock
 from simple_websocket import ConnectionClosed
 
-from app import config
+from app import configs
 from app.auth import COOKIE_NAME, read_token
 from app.game.arena import arena
+from app.game.notifications import notification_hub
 from app.game.presence import online_ids, touch
 from app.game.service import ensure_match
 
@@ -24,13 +25,13 @@ def _origin_allowed() -> bool:
     if origin is None:
         return True
     origin = origin.rstrip("/")
-    return origin == request.host_url.rstrip("/") or origin in config.ALLOWED_ORIGINS
+    return origin == request.host_url.rstrip("/") or origin in configs.ALLOWED_ORIGINS
 
 
 def _payload(raw):
     if isinstance(raw, bytes):
         raw = raw.decode("utf-8", errors="strict")
-    if not isinstance(raw, str) or len(raw) > config.WS_MAX_MESSAGE_SIZE:
+    if not isinstance(raw, str) or len(raw) > configs.WS_MAX_MESSAGE_SIZE:
         return None
     try:
         message = json.loads(raw)
@@ -100,6 +101,7 @@ def presence_socket(ws):
         ws.close(4401)
         return
     touch(user_id)
+    notification_hub.add(user_id, ws)
     try:
         while True:
             raw = ws.receive()
@@ -114,3 +116,5 @@ def presence_socket(ws):
         pass
     except Exception:
         logger.warning("presence websocket failed", exc_info=True)
+    finally:
+        notification_hub.remove(user_id, ws)

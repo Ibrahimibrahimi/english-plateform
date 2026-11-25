@@ -1,20 +1,14 @@
 import { escapeHtml, request } from "./api.js";
 import { toast } from "./ui.js";
 
-const SKILLS = [
-  ["BLOCK_POINTS", "Block points"],
-  ["REDUCE_POINTS_PERCENT", "Reduce points"],
-  ["STEAL_POINTS_RANGE", "Steal points"],
-  ["SWAP_SKILLS", "Swap skills"],
-  ["CLEAR_OPPONENT_SKILL", "Clear skill"],
-];
+const settings = await request("/api/config");
 
 const skillOptions = document.getElementById("skill-options");
 if (skillOptions) {
-  skillOptions.innerHTML = SKILLS.map(([code, label]) => `
+  skillOptions.innerHTML = settings.skills.map(({ code, label }) => `
     <label class="label cursor-pointer gap-2 border border-base-300 rounded px-2">
-      <input type="checkbox" class="checkbox checkbox-warning checkbox-sm" name="skills" value="${code}" checked />
-      <span class="label-text text-xs">${label}</span>
+      <input type="checkbox" class="checkbox checkbox-warning checkbox-sm" name="skills" value="${escapeHtml(code)}" checked />
+      <span class="label-text text-xs">${escapeHtml(label)}</span>
     </label>`).join("");
 }
 

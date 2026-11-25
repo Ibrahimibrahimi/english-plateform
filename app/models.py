@@ -1,8 +1,9 @@
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app import configs
 from app.db import Base
 
 
@@ -23,6 +24,20 @@ class User(Base):
     wins: Mapped[int] = mapped_column(Integer, default=0)
     losses: Mapped[int] = mapped_column(Integer, default=0)
     tournaments_played: Mapped[int] = mapped_column(Integer, default=0)
+    avatar: Mapped[str] = mapped_column(String(20), default=configs.DEFAULT_AVATAR)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    type: Mapped[str] = mapped_column(String(40))
+    message: Mapped[str] = mapped_column(String(300))
+    link: Mapped[str] = mapped_column(String(300), default="")
+    data: Mapped[str] = mapped_column(String(500), default="")
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -33,7 +48,7 @@ class Tournament(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True)
     description: Mapped[str] = mapped_column(String(300), default="")
     key: Mapped[str] = mapped_column(String(20), unique=True, index=True)
-    max_players: Mapped[int] = mapped_column(Integer, default=16)
+    max_players: Mapped[int] = mapped_column(Integer, default=configs.DEFAULT_TOURNAMENT_MAX_PLAYERS)
     allowed_letters: Mapped[str] = mapped_column(String(30), default="all")
     skills: Mapped[str] = mapped_column(String(300), default="")
     status: Mapped[str] = mapped_column(String(20), default="open")
@@ -62,7 +77,9 @@ class Challenge(Base):
     allowed_letters: Mapped[str] = mapped_column(String(30), default="all")
     skills: Mapped[str] = mapped_column(String(300), default="")
     status: Mapped[str] = mapped_column(String(20), default="created")
-    expires_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: utcnow() + timedelta(hours=24))
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: utcnow() + timedelta(hours=configs.CHALLENGE_TTL_HOURS)
+    )
     match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -94,11 +111,11 @@ class MatchParticipant(Base):
     match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     points: Mapped[int] = mapped_column(Integer, default=0)
-    health: Mapped[int] = mapped_column(Integer, default=100)
-    max_health: Mapped[int] = mapped_column(Integer, default=100)
-    armor: Mapped[int] = mapped_column(Integer, default=60)
-    max_armor: Mapped[int] = mapped_column(Integer, default=60)
-    attack: Mapped[int] = mapped_column(Integer, default=6)
+    health: Mapped[int] = mapped_column(Integer, default=configs.HEALTH_BASE)
+    max_health: Mapped[int] = mapped_column(Integer, default=configs.HEALTH_BASE)
+    armor: Mapped[int] = mapped_column(Integer, default=configs.ARMOR_BASE)
+    max_armor: Mapped[int] = mapped_column(Integer, default=configs.ARMOR_BASE)
+    attack: Mapped[int] = mapped_column(Integer, default=configs.ATTACK_BASE)
     skill: Mapped[str | None] = mapped_column(String(40), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
 
@@ -120,7 +137,7 @@ class Round(Base):
     match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"))
     index: Mapped[int] = mapped_column(Integer)
     letters: Mapped[str] = mapped_column(String(30))
-    duration_seconds: Mapped[int] = mapped_column(Integer, default=60)
+    duration_seconds: Mapped[int] = mapped_column(Integer, default=configs.ROUND_SECONDS)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

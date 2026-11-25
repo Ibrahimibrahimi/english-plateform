@@ -9,8 +9,8 @@
     <form id="challenge-form" class="flex flex-col gap-4 mt-4">
       <label class="form-control">
         <span class="label-text font-semibold">Allowed letters</span>
-        <input name="letters" class="input input-bordered" value="AEIOURSTLND" minlength="6" maxlength="12" required />
-        <span class="label-text-alt">6-12 unique letters, shared by both players.</span>
+        <input name="letters" class="input input-bordered" value="{{ default_letters }}" minlength="{{ min_letters }}" maxlength="{{ max_letters }}" required />
+        <span class="label-text-alt">6-12 unique letters, shared by both players. Letters may be reused inside a word.</span>
       </label>
       <fieldset class="flex flex-wrap gap-2" id="skill-options"></fieldset>
       <button class="btn btn-warning" type="submit">Create challenge</button>

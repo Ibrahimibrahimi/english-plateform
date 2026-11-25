@@ -6,33 +6,38 @@ import secrets
 from flask import abort, g, has_request_context, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
-from app import config
+from app import configs
 from app.db import SessionLocal
 from app.models import User
 
-COOKIE_NAME = "sb_session"
-_serializer = URLSafeTimedSerializer(config.SECRET_KEY, salt="spellbattle-session")
-_ITERATIONS = 200_000
-USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
+COOKIE_NAME = configs.SESSION_COOKIE_NAME
+_serializer = URLSafeTimedSerializer(configs.SECRET_KEY, salt=configs.SESSION_SALT)
+_ITERATIONS = configs.PASSWORD_HASH_ITERATIONS
+USERNAME_PATTERN = re.compile(configs.USERNAME_PATTERN)
 
 
 def validate_username(raw: str) -> str:
     username = str(raw).strip()
-    if not (3 <= len(username) <= 50) or not USERNAME_PATTERN.fullmatch(username):
-        raise ValueError("Username must be 3-50 letters, numbers, dots, dashes or underscores")
+    if not (configs.USERNAME_MIN_LENGTH <= len(username) <= configs.USERNAME_MAX_LENGTH):
+        raise ValueError(
+            f"Username must be {configs.USERNAME_MIN_LENGTH}-{configs.USERNAME_MAX_LENGTH} "
+            "letters, numbers, dots, dashes or underscores"
+        )
+    if not USERNAME_PATTERN.fullmatch(username):
+        raise ValueError("Username contains invalid characters")
     return username
 
 
 def hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
+    salt = secrets.token_bytes(configs.PASSWORD_SALT_BYTES)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _ITERATIONS)
-    return f"pbkdf2_sha256${_ITERATIONS}${salt.hex()}${digest.hex()}"
+    return f"{configs.PASSWORD_HASH_ALGORITHM}${_ITERATIONS}${salt.hex()}${digest.hex()}"
 
 
 def verify_password(password: str, stored: str) -> bool:
     try:
         algorithm, iterations, salt, digest = stored.split("$")
-        if algorithm != "pbkdf2_sha256":
+        if algorithm != configs.PASSWORD_HASH_ALGORITHM:
             return False
         candidate = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), int(iterations))
         return hmac.compare_digest(candidate.hex(), digest)
@@ -48,7 +53,7 @@ def read_token(token: str | None) -> int | None:
     if not token:
         return None
     try:
-        return _serializer.loads(token, max_age=config.SESSION_MAX_AGE)
+        return _serializer.loads(token, max_age=configs.SESSION_MAX_AGE)
     except (BadSignature, ValueError, TypeError):
         return None
 
@@ -57,10 +62,10 @@ def set_session(response, user_id: int) -> None:
     response.set_cookie(
         COOKIE_NAME,
         make_token(user_id),
-        max_age=config.SESSION_MAX_AGE,
+        max_age=configs.SESSION_MAX_AGE,
         httponly=True,
-        samesite="lax",
-        secure=config.SESSION_COOKIE_SECURE,
+        samesite=configs.COOKIE_SAMESITE,
+        secure=configs.SESSION_COOKIE_SECURE,
     )
 
 
@@ -100,6 +105,13 @@ def require_admin(req=None) -> User:
     return user
 
 
+def avatar_info(user: User) -> dict:
+    """Return the configured display data for a player's chosen picture."""
+    key = getattr(user, "avatar", None) or configs.DEFAULT_AVATAR
+    option = configs.AVATARS.get(key, configs.AVATARS[configs.DEFAULT_AVATAR])
+    return {"key": key, "emoji": option["emoji"], "color": option["color"], "label": option["label"]}
+
+
 def public_user(user: User) -> dict:
     return {
         "id": user.id,
@@ -111,6 +123,7 @@ def public_user(user: User) -> dict:
         "wins": user.wins,
         "losses": user.losses,
         "tournaments_played": user.tournaments_played,
+        "avatar": avatar_info(user),
     }
 
 
@@ -122,4 +135,6 @@ def public_profile(user: User) -> dict:
         "wins": user.wins,
         "losses": user.losses,
         "tournaments_played": user.tournaments_played,
+        "avatar": avatar_info(user),
+        "profile_url": f"/player/{user.id}",
     }

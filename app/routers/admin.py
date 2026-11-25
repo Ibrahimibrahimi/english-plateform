@@ -2,9 +2,12 @@ import json
 
 from flask import Blueprint, abort, g, jsonify, request
 
+from app import configs
 from app.auth import require_admin
+from app.game.tournaments import create_tournament
 from app.game.words import normalize_letters
 from app.models import AdminAction, LetterSet, Tournament
+from app.validation import clean_text
 
 router = Blueprint("admin", __name__, url_prefix="/admin/api")
 
@@ -28,9 +31,14 @@ def create_letter_set():
     db = g.db
     admin = require_admin()
     payload = request.get_json(silent=True) or {}
-    name = str(payload.get("name", "")).strip()
-    if len(name) < 2:
-        abort(400, description="Name must be at least 2 characters")
+    name = clean_text(
+        payload.get("name", ""),
+        configs.LETTER_SET_NAME_MAX_LENGTH,
+        required=True,
+        label="Name",
+    )
+    if len(name) < configs.LETTER_SET_NAME_MIN_LENGTH:
+        abort(400, description=f"Name must be at least {configs.LETTER_SET_NAME_MIN_LENGTH} characters")
     try:
         letters = normalize_letters(str(payload.get("letters", "")))
     except ValueError as exc:
@@ -73,13 +81,42 @@ def tournaments():
     ])
 
 
+@router.post("/tournaments")
+def create_tournament_admin():
+    """Create a tournament from the admin panel with shared strict validation."""
+    db = g.db
+    admin = require_admin()
+    payload = request.get_json(silent=True) or {}
+    tournament = create_tournament(db, admin, payload)
+    log(
+        db,
+        admin.id,
+        "tournament.created",
+        {
+            "id": tournament.id,
+            "name": tournament.name,
+            "max_players": tournament.max_players,
+            "allowed_letters": tournament.allowed_letters,
+        },
+    )
+    db.commit()
+    return jsonify({
+        "id": tournament.id,
+        "key": tournament.key,
+        "name": tournament.name,
+        "max_players": tournament.max_players,
+        "allowed_letters": tournament.allowed_letters,
+        "skills": tournament.skills,
+    })
+
+
 @router.post("/tournaments/<int:tournament_id>/status")
 def set_tournament_status(tournament_id: int):
     db = g.db
     admin = require_admin()
     payload = request.get_json(silent=True) or {}
-    status = str(payload.get("status", ""))
-    if status not in {"draft", "open", "registration_closed", "in_progress", "completed", "cancelled"}:
+    status = clean_text(payload.get("status", ""), configs.KEY_MAX_LENGTH)
+    if status not in configs.TOURNAMENT_STATUSES:
         abort(400, description="Invalid status")
     tournament = db.get(Tournament, tournament_id)
     if tournament is None:

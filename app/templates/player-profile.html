@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}SpellBattle | Player profile{% endblock %}
+{% block page %}player-profile{% endblock %}
+{% block content %}
+<div id="player-meta" data-id="{{ profile_id }}" class="mx-auto max-w-3xl">
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body items-center text-center">
+      <span class="loading loading-spinner loading-md"></span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/player-profile.js"></script>{% endblock %}

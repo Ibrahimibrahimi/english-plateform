@@ -56,6 +56,39 @@ if (usernameForm) {
   });
 }
 
+const avatarPicker = document.getElementById("avatar-picker");
+if (avatarPicker) {
+  avatarPicker.querySelectorAll(".avatar-option").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const choice = button.querySelector("span");
+      try {
+        await request("/api/me", {
+          method: "PATCH",
+          body: JSON.stringify({ avatar: button.dataset.key }),
+        });
+        avatarPicker.querySelectorAll(".avatar-option").forEach((option) => {
+          option.classList.toggle("border-warning", option === button);
+          option.classList.toggle("border-transparent", option !== button);
+        });
+        const preview = document.getElementById("profile-avatar");
+        if (preview) {
+          preview.textContent = choice.textContent;
+          preview.style.background = choice.style.background;
+        }
+        const navAvatar = document.getElementById("avatar-initials");
+        if (navAvatar) {
+          navAvatar.textContent = choice.textContent;
+          navAvatar.parentElement.style.background = choice.style.background;
+        }
+        document.getElementById("avatar-feedback").textContent = "Profile picture saved.";
+        toast("Profile picture updated", "success");
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    });
+  });
+}
+
 const historyList = document.getElementById("history-list");
 if (historyList) {
   try {

@@ -2,17 +2,31 @@
 {% block title %}SpellBattle | Leaderboard{% endblock %}
 {% block page %}leaderboard{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-4xl card bg-base-100 border border-base-300">
-  <div class="card-body">
-    <h1 class="card-title text-2xl">Leaderboard</h1>
-    <p class="text-sm opacity-70">Lifetime learning points earned from validated words.</p>
-    <div class="overflow-x-auto mt-4">
-      <table class="table table-zebra">
-        <thead><tr><th>#</th><th>Player</th><th>Learning points</th><th>Wins</th></tr></thead>
-        <tbody id="leaderboard-body"><tr><td colspan="4" class="text-center">Loading...</td></tr></tbody>
-      </table>
-    </div>
+<div class="mx-auto max-w-6xl flex flex-col gap-8">
+  <div class="text-center">
+    <h1 class="text-4xl font-extrabold">Leaderboard</h1>
+    <p class="opacity-70 mt-2">Lifetime learning points earned from validated English words.</p>
   </div>
+
+  <section>
+    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">🏆 Medal mode <span class="text-sm font-normal opacity-60">top 3</span></h2>
+    <div id="medal-podium" class="grid gap-4 sm:grid-cols-3 items-end">
+      <div class="card bg-base-100 border border-base-300 h-40 flex items-center justify-center"><span class="loading loading-spinner loading-md"></span></div>
+    </div>
+  </section>
+
+  <section class="card bg-base-100 border border-base-300">
+    <div class="card-body">
+      <h2 class="card-title text-2xl">All players</h2>
+      <p class="text-sm opacity-70">Tap a profile to see the player's full card.</p>
+      <div class="overflow-x-auto mt-4">
+        <table class="table table-zebra">
+          <thead><tr><th>#</th><th>Player</th><th>Learning points</th><th>Record</th><th>Tournaments</th><th>Profile</th></tr></thead>
+          <tbody id="leaderboard-body"><tr><td colspan="6" class="text-center">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </div>
 {% endblock %}
 {% block scripts %}<script type="module" src="/static/js/leaderboard.js"></script>{% endblock %}

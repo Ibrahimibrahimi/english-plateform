@@ -4,7 +4,7 @@ import math
 import threading
 import time
 
-from app import config
+from app import configs
 from app.game.rules import (
     activate_skill,
     apply_damage,
@@ -45,7 +45,9 @@ class LiveMatch:
         self.status = "waiting"
         self.round_index = -1
         self.round_deadline = 0.0
-        self.submitted: dict[int, set[str]] = {uid: set() for uid in players}
+        # One shared pool for the whole match: a word played by either player
+        # cannot be replayed by the opponent (or by the same player).
+        self.used_words: set[str] = set()
         self.sudden_death = False
         self.winner_id: int | None = None
         self._timer: threading.Timer | None = None
@@ -68,7 +70,7 @@ class LiveMatch:
                     for key, value in state.items()
                     if key not in {"blocked_until", "health_ready_at", "armor_ready_at", "skill_ready_at"}
                 },
-                "skill_label": config.SKILLS.get(state["skill"]),
+                "skill_label": configs.SKILLS.get(state["skill"]),
                 "blocked": is_blocked(state, now),
                 "health_ready_in": max(0, math.ceil(state["health_ready_at"] - now)),
                 "armor_ready_in": max(0, math.ceil(state["armor_ready_at"] - now)),
@@ -169,7 +171,7 @@ class LiveMatch:
 
     def _schedule_forfeit_locked(self, user_id: int) -> None:
         timer = threading.Timer(
-            config.RECONNECT_GRACE_SECONDS,
+            configs.RECONNECT_GRACE_SECONDS,
             self._forfeit_after_grace,
             args=(user_id,),
         )
@@ -218,7 +220,6 @@ class LiveMatch:
                 return False
             state["connected"] = False
             self.players[user_id] = state
-            self.submitted.setdefault(user_id, set())
             return True
 
     def start(self) -> None:
@@ -247,7 +248,6 @@ class LiveMatch:
             return
         current = self.rounds[self.round_index]
         self.round_deadline = time.monotonic() + current["duration_seconds"]
-        self.submitted = {uid: set() for uid in self.players}
         self._notify(self.on_round, self.match_id, self.round_index)
         self._broadcast_locked(
             {
@@ -264,7 +264,7 @@ class LiveMatch:
         self.broadcast_state()
 
     def _schedule_tick_locked(self) -> None:
-        timer = threading.Timer(1.0, self._timer_tick)
+        timer = threading.Timer(configs.MATCH_TICK_SECONDS, self._timer_tick)
         timer.daemon = True
         self._timer = timer
         timer.start()
@@ -299,14 +299,16 @@ class LiveMatch:
                 return
             candidate = (word or "").strip().lower()
             letters = self.rounds[self.round_index]["letters"]
-            if candidate in self.submitted[user_id]:
-                self._error(user_id, "You already used that word this round")
+            if candidate in self.used_words:
+                self._error(user_id, "That word was already used in this match")
                 return
+            # Validation happens before any state change: a word that is not an
+            # English dictionary word is rejected without scoring or damage.
             if not is_valid_word(candidate, letters):
                 self._error(user_id, "Invalid word")
                 return
 
-            self.submitted[user_id].add(candidate)
+            self.used_words.add(candidate)
             self.emit_event("answer.submitted", user_id, {"word": candidate, "command_id": command_id})
             actor = self.players[user_id]
 
@@ -322,6 +324,8 @@ class LiveMatch:
 
             opponent_id = self.opponent_id(user_id)
             knocked_out = False
+            # Only a validated, unblocked word that awarded points may fire.
+            # Invalid words never touch either player's health.
             if opponent_id is not None and gained:
                 opponent = self.players[opponent_id]
                 apply_damage(actor, opponent)
@@ -446,7 +450,7 @@ class Arena:
                 if on_finish is not None:
                     on_finish(match_id, reason, winner_id, players_state, round_index)
             finally:
-                timer = threading.Timer(config.MATCH_RETENTION_SECONDS, self.remove, args=(match_id,))
+                timer = threading.Timer(configs.MATCH_RETENTION_SECONDS, self.remove, args=(match_id,))
                 timer.daemon = True
                 timer.start()
 

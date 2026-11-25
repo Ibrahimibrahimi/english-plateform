@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import DATABASE_URL
@@ -39,3 +39,20 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(engine)
+
+
+def ensure_column(table_name: str, column_name: str, column_type: str, default_sql: str) -> bool:
+    """Add a column to an existing table created before the setting existed.
+
+    Identifiers are supplied by our own code (never by a request), so this is
+    safe to build as a statement.  Values are bound as SQL literals defined in
+    ``configs.py``.
+    """
+    existing = {column["name"] for column in inspect(engine).get_columns(table_name)}
+    if column_name in existing:
+        return False
+    with engine.begin() as connection:
+        connection.execute(
+            text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default_sql}")
+        )
+    return True

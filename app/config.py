@@ -1,67 +1,7 @@
-import os
-from pathlib import Path
+"""Backwards-compatible alias for :mod:`app.configs`.
 
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent
-DATA_DIR = BASE_DIR / "data"
-STATIC_DIR = BASE_DIR / "static"
-TEMPLATES_DIR = BASE_DIR / "templates"
-WORDS_FILE = DATA_DIR / "words.txt"
+All settings now live in ``app/configs.py``.  This module is kept so older
+imports (and the existing test-suite) keep working.
+"""
 
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'spellbattle.db'}")
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-change-me")
-SESSION_MAX_AGE = 60 * 60 * 24 * 7
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@spellbattle.local")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-
-MIN_WORD_LENGTH = 3
-MAX_WORD_LENGTH = 12
-MIN_LETTERS = 6
-MAX_LETTERS = 12
-ROUNDS_PER_MATCH = 5
-ROUND_SECONDS = 60
-
-HEALTH_BASE = 100
-HEALTH_PER_POINT = 3
-HEALTH_CAP = 300
-ARMOR_BASE = 60
-ARMOR_PER_POINT = 2
-ARMOR_CAP = 200
-ATTACK_BASE = 6
-ATTACK_PER_POINT = 1
-ATTACK_CAP = 30
-
-HEALTH_REGEN_PERCENT = 0.20
-ARMOR_REGEN_PERCENT = 0.15
-REGEN_HEALTH_COST = 10
-REGEN_ARMOR_COST = 10
-REGEN_COOLDOWN = 10
-SPECIAL_REGEN_COST = 15
-SPECIAL_REGEN_COOLDOWN = 10
-
-BLOCK_SECONDS = 5
-REDUCE_POINTS_PERCENT = 0.20
-STEAL_MIN_POINTS = 12
-STEAL_MAX_POINTS = 30
-
-RECONNECT_GRACE_SECONDS = 30
-PRESENCE_TIMEOUT_SECONDS = 30
-CHALLENGE_TTL_HOURS = 24
-MATCH_RETENTION_SECONDS = int(os.getenv("MATCH_RETENTION_SECONDS", "600"))
-
-WS_MAX_MESSAGE_SIZE = int(os.getenv("WS_MAX_MESSAGE_SIZE", "4096"))
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "").lower() in {"1", "true", "yes"}
-ALLOWED_ORIGINS = tuple(
-    origin.strip().rstrip("/")
-    for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
-    if origin.strip()
-)
-
-SKILLS = {
-    "BLOCK_POINTS": "Block point generation (5s)",
-    "REDUCE_POINTS_PERCENT": "Reduce opponent points by 20%",
-    "STEAL_POINTS_RANGE": "Take 12-30 points",
-    "SWAP_SKILLS": "Switch skills with opponent",
-    "CLEAR_OPPONENT_SKILL": "Clear opponent skill",
-}
-SKILL_CODES = list(SKILLS)
+from app.configs import *

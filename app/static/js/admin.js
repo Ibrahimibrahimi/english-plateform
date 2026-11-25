@@ -1,17 +1,11 @@
 import { escapeHtml, request } from "./api.js";
 import { toast } from "./ui.js";
 
-const SKILLS = [
-  ["BLOCK_POINTS", "Block points"],
-  ["REDUCE_POINTS_PERCENT", "Reduce points"],
-  ["STEAL_POINTS_RANGE", "Steal points"],
-  ["SWAP_SKILLS", "Swap skills"],
-  ["CLEAR_OPPONENT_SKILL", "Clear skill"],
-];
+const settings = await request("/api/config");
 
 const options = document.getElementById("skill-options");
 if (options) {
-  options.innerHTML = SKILLS.map(([code, label]) => `<label class="label cursor-pointer gap-2 border border-base-300 rounded px-2"><input type="checkbox" class="checkbox checkbox-warning checkbox-sm" name="skills" value="${code}" checked /><span class="label-text text-xs">${label}</span></label>`).join("");
+  options.innerHTML = settings.skills.map(({ code, label }) => `<label class="label cursor-pointer gap-2 border border-base-300 rounded px-2"><input type="checkbox" class="checkbox checkbox-warning checkbox-sm" name="skills" value="${escapeHtml(code)}" checked /><span class="label-text text-xs">${escapeHtml(label)}</span></label>`).join("");
 }
 
 async function loadLetters() {
@@ -40,7 +34,7 @@ async function loadTournaments() {
   if (!list) return;
   try {
     const tournaments = await request("/admin/api/tournaments");
-    list.innerHTML = tournaments.length ? tournaments.map((item) => `<div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><h3 class="font-bold">${escapeHtml(item.name)}</h3><p class="text-xs">Key: ${escapeHtml(item.key)} · ${item.max_players} players · letters: ${escapeHtml(item.allowed_letters)}</p><select class="select select-bordered select-sm" data-id="${item.id}">${["draft", "open", "registration_closed", "in_progress", "completed", "cancelled"].map((status) => `<option ${status === item.status ? "selected" : ""}>${status}</option>`).join("")}</select><button class="btn btn-sm btn-warning update-status" data-id="${item.id}">Update</button></div></div>`).join("") : "<p class='opacity-70'>No tournaments.</p>";
+    list.innerHTML = tournaments.length ? tournaments.map((item) => `<div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><h3 class="font-bold">${escapeHtml(item.name)}</h3><p class="text-xs">Key: ${escapeHtml(item.key)} · ${item.max_players} players · letters: ${escapeHtml(item.allowed_letters)}</p><select class="select select-bordered select-sm" data-id="${item.id}">${settings.tournament_statuses.map((status) => `<option ${status === item.status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}</select><button class="btn btn-sm btn-warning update-status" data-id="${item.id}">Update</button></div></div>`).join("") : "<p class='opacity-70'>No tournaments.</p>";
     list.querySelectorAll(".update-status").forEach((button) => {
       button.addEventListener("click", async () => {
         const status = list.querySelector(`select[data-id="${button.dataset.id}"]`).value;
@@ -90,7 +84,7 @@ if (tournamentForm) {
     event.preventDefault();
     const form = new FormData(tournamentForm);
     try {
-      const result = await request("/api/tournaments", {
+      const result = await request("/admin/api/tournaments", {
         method: "POST",
         body: JSON.stringify({
           name: form.get("name"),
@@ -100,7 +94,7 @@ if (tournamentForm) {
           skills: form.getAll("skills").join(","),
         }),
       });
-      document.getElementById("tournament-create-result").textContent = `Created "${result.name}" with key ${result.key}`;
+      document.getElementById("tournament-create-result").textContent = `Created "${result.name}" with key ${result.key} (${result.max_players} players)`;
       loadTournaments();
       toast("Tournament created", "success");
     } catch (error) {

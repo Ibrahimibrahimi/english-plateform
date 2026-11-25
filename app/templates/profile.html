@@ -6,8 +6,26 @@
   {% if user %}
   <div class="card bg-base-100 border border-base-300">
     <div class="card-body">
-      <h1 class="card-title text-2xl">{{ user.username }}</h1>
-      <p class="text-sm opacity-70">{{ user.email }} · {{ user.role }}</p>
+      <div class="flex items-center gap-4">
+        <div class="avatar avatar-placeholder">
+          <div id="profile-avatar" class="w-16 rounded-full text-3xl flex items-center justify-center" style="background:{{ avatar.color }}">{{ avatar.emoji }}</div>
+        </div>
+        <div>
+          <h1 class="card-title text-2xl">{{ user.username }}</h1>
+          <p class="text-sm opacity-70">{{ user.email }} · {{ user.role }}</p>
+        </div>
+      </div>
+      <div class="mt-6">
+        <h2 class="font-bold mb-2">Choose your profile picture</h2>
+        <div id="avatar-picker" class="flex flex-wrap gap-3">
+          {% for key, option in avatars.items() %}
+          <button type="button" class="avatar-option border-2 rounded-full p-1 {{ 'border-warning' if key == current_avatar else 'border-transparent' }}" data-key="{{ key }}" title="{{ option.label }}">
+            <span class="w-12 h-12 rounded-full text-2xl flex items-center justify-center" style="background:{{ option.color }}">{{ option.emoji }}</span>
+          </button>
+          {% endfor %}
+        </div>
+        <p id="avatar-feedback" class="text-sm mt-2 opacity-70"></p>
+      </div>
       <div class="stats stats-vertical lg:stats-horizontal shadow mt-4 w-full">
         <div class="stat"><div class="stat-title">Learning points</div><div class="stat-value text-warning" id="stat-points">{{ user.lifetime_learning_points }}</div></div>
         <div class="stat"><div class="stat-title">Record</div><div class="stat-value" id="stat-record">{{ user.wins }} / {{ user.losses }}</div></div>

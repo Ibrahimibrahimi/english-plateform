@@ -10,7 +10,7 @@ Two players compete by building English words from a shared set of letters. Vali
 
 - The admin creates letter sets (6-12 unique letters) and tournaments.
 - Every round gives both players the same letters.
-- Players type words using only those letters, with no letter repeated inside a word.
+- Players type English words using only those letters; letters may be reused, but a word cannot be played twice in the same round by either player.
 - Words are checked against an offline English dictionary in `app/data/words.txt`.
 - Score grows with word length: 3 letters = 3 points, 4 = 6, 5 = 10, and so on.
 
@@ -57,7 +57,9 @@ Finished matches stay available in memory for `MATCH_RETENTION_SECONDS` (10 minu
 
 ```
 app/
-  config.py          settings and game constants
+  configs.py         every setting and game constant (single source of truth)
+  config.py          compatibility alias for configs.py
+  validation.py      input sanitisation and injection-safe helpers
   db.py              SQLAlchemy engine and session helpers
   models.py          accounts, tournaments, challenges, matches, events
   auth.py            password hashing and signed session cookies
@@ -79,7 +81,7 @@ run.py               Flask launcher
 
 ## Pages
 
-`/` home · `/play` mode chooser (friend, challenge, tournament) · `/play-with-friend` · `/play-challenge` · `/play-tournament` · `/challenge/create` · `/challenge/join` · `/tournament/search` · `/tournament/join` · `/players` · `/leaderboard` · `/practice` · `/profile` · `/playing/{id}` · `/admin`
+`/` home · `/play` mode chooser (friend, challenge, tournament) · `/play-with-friend` · `/play-challenge` · `/play-tournament` · `/challenge/create` · `/challenge/list` (private challenges by other players) · `/challenge/join` · `/tournament/search` · `/tournament/join` · `/players` · `/player/{id}` (public profile) · `/leaderboard` · `/practice` · `/profile` (with avatar picker) · `/playing/{id}` · `/admin` · `/admin/tournaments/new`
 
 ## Running locally
 
@@ -90,7 +92,15 @@ python run.py
 
 Open http://127.0.0.1:8000. The first admin is created from `ADMIN_EMAIL` and `ADMIN_PASSWORD` (defaults: `admin@spellbattle.local` / `admin123`).
 
-## Configuration
+A default public tournament (`SpellBattle Open`, 20 max players) is created on
+first boot. Players receive a persisted, realtime notification when someone
+challenges them or joins their challenge, and can pick a profile picture from
+the presets defined in `configs.py`.
+
+All tunable values (letter limits per challenge/tournament, player limits,
+word scoring, skill effects, validation bounds, avatar choices and leaderboard
+limits) are defined in `app/configs.py`. Deployment-specific overrides still
+come from environment variables:
 
 | Variable | Default | Purpose |
 |---|---|---|

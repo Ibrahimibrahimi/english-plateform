@@ -67,3 +67,81 @@ if (logoutButton) {
     }
   });
 }
+
+// Challenge notifications: persisted list plus a realtime presence socket.
+const userId = document.body?.dataset.userId;
+if (userId) {
+  const { request, escapeHtml } = await import("./api.js");
+  const countEl = $("notification-count");
+  const listEl = $("notification-list");
+
+  const renderNotifications = async () => {
+    try {
+      const data = await request("/api/notifications");
+      if (countEl) {
+        countEl.textContent = data.unread_count;
+        countEl.classList.toggle("hidden", !data.unread_count);
+      }
+      if (listEl) {
+        listEl.innerHTML = `<li class="menu-title flex items-center justify-between">Notifications<button id="notif-read-all" class="btn btn-ghost btn-xs">Mark all read</button></li>` +
+          (data.items.length
+            ? data.items.map((item) => `
+              <li>
+                <a href="${escapeHtml(item.link || "#")}" data-id="${item.id}" class="notification-item ${item.read ? "opacity-60" : "font-semibold"}">
+                  <span>${escapeHtml(item.message)}</span>
+                </a>
+              </li>`).join("")
+            : `<li><span class="opacity-60 text-sm">No notifications yet.</span></li>`);
+        listEl.querySelectorAll(".notification-item").forEach((link) => {
+          link.addEventListener("click", () => {
+            request(`/api/notifications/${link.dataset.id}/read`, { method: "POST", body: JSON.stringify({}) }).catch(() => {});
+          });
+        });
+        listEl.querySelector("#notif-read-all")?.addEventListener("click", async (event) => {
+          event.preventDefault();
+          try {
+            await request("/api/notifications/read", { method: "POST", body: JSON.stringify({}) });
+            renderNotifications();
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+      }
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  };
+
+  renderNotifications();
+
+  const scheme = location.protocol === "https:" ? "wss" : "ws";
+  let notificationSocket = null;
+  let pingTimer = null;
+  const connectNotifications = () => {
+    notificationSocket = new WebSocket(`${scheme}://${location.host}/ws/presence`);
+    notificationSocket.addEventListener("message", (event) => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        return;
+      }
+      if (message.type === "notification") {
+        toast(message.payload.message, "warning");
+        renderNotifications();
+      }
+    });
+    notificationSocket.addEventListener("close", () => {
+      clearInterval(pingTimer);
+      if (document.body?.dataset.userId) {
+        setTimeout(connectNotifications, 3000);
+      }
+    });
+  };
+  connectNotifications();
+  pingTimer = setInterval(() => {
+    if (notificationSocket?.readyState === WebSocket.OPEN) {
+      notificationSocket.send(JSON.stringify({ type: "ping" }));
+    }
+  }, 20000);
+}

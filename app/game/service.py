@@ -2,7 +2,7 @@ import json
 import secrets
 from datetime import UTC, datetime
 
-from app import config
+from app import configs
 from app.db import SessionLocal
 from app.game.arena import arena
 from app.game.rules import new_player
@@ -16,21 +16,32 @@ def new_key(prefix: str = "") -> str:
 
 def skill_pool(raw: str | None) -> list[str]:
     codes = [code.strip() for code in (raw or "").split(",") if code.strip()]
-    valid = [code for code in codes if code in config.SKILLS]
-    return valid or config.SKILL_CODES
+    valid = [code for code in codes if code in configs.SKILLS]
+    return valid or configs.SKILL_CODES
 
 
-def letters_for(db, requested: str | None) -> str:
-    if requested and requested.strip().lower() != "all":
-        return normalize_letters(requested)
+def letters_for(db, requested: str | None, kind: str = "challenge") -> str:
+    """Resolve the letter pool for a challenge or a tournament.
+
+    ``all`` (the default) uses the first administrator-defined letter set.  A
+    custom pool is validated against the per-mode limits in ``configs.py``.
+    """
+    minimum = (
+        configs.TOURNAMENT_MIN_LETTERS if kind == "tournament" else configs.CHALLENGE_MIN_LETTERS
+    )
+    maximum = (
+        configs.TOURNAMENT_MAX_LETTERS if kind == "tournament" else configs.CHALLENGE_MAX_LETTERS
+    )
+    if requested and str(requested).strip().lower() != "all":
+        return normalize_letters(requested, min_length=minimum, max_length=maximum)
     pools = db.query(LetterSet).order_by(LetterSet.id).all()
-    return pools[0].letters if pools else "AEIOURSTLND"
+    return pools[0].letters if pools else configs.DEFAULT_LETTERS
 
 
 def build_rounds(letters: str) -> list[dict]:
     return [
-        {"index": index, "letters": letters, "duration_seconds": config.ROUND_SECONDS}
-        for index in range(config.ROUNDS_PER_MATCH)
+        {"index": index, "letters": letters, "duration_seconds": configs.ROUND_SECONDS}
+        for index in range(configs.ROUNDS_PER_MATCH)
     ]
 
 
@@ -75,7 +86,7 @@ def mark_round(match_id: int, round_index: int) -> None:
                     match_id=match_id,
                     index=round_index,
                     letters=match.allowed_letters,
-                    duration_seconds=config.ROUND_SECONDS,
+                    duration_seconds=configs.ROUND_SECONDS,
                     started_at=datetime.now(UTC),
                 )
             )

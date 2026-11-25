@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link href="/static/css/index.css" rel="stylesheet" />
 </head>
-<body class="bg-base-200 min-h-screen" data-page="{% block page %}{% endblock %}">
+<body class="bg-base-200 min-h-screen" data-page="{% block page %}{% endblock %}" data-user-id="{{ user.id if user else '' }}">
   <div class="drawer">
     <input id="menu-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content flex flex-col min-h-screen">
@@ -30,10 +30,20 @@
             <svg class="swap-on h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M21.64 13a1 1 0 00-1.05-.14 8.05 8.05 0 01-3.37.73 8.15 8.15 0 01-8.14-8.1 8.59 8.59 0 01.25-2A1 1 0 008 2.36a10.14 10.14 0 1014 11.69 1 1 0 00-.36-1.05zm-9.5 6.69A8.14 8.14 0 017.08 5.22v.27A10.15 10.15 0 0017.22 15.63a9.79 9.79 0 002.1-.22 8.14 8.14 0 01-7.18 4.32z"/></svg>
           </label>
           {% if user %}
+          <span class="badge badge-warning badge-outline font-bold" title="Lifetime learning points">{{ user.lifetime_learning_points }} pts</span>
+          <div class="dropdown dropdown-end">
+            <label tabindex="0" class="btn btn-ghost btn-circle" aria-label="Notifications" title="Notifications">
+              🔔<span id="notification-count" class="badge badge-warning badge-xs hidden absolute -top-1 -right-1">0</span>
+            </label>
+            <ul tabindex="0" id="notification-list" class="dropdown-content menu bg-base-100 rounded-box z-[70] w-80 p-2 shadow border border-base-300">
+              <li class="menu-title">Notifications</li>
+              <li><span class="opacity-60 text-sm">Loading...</span></li>
+            </ul>
+          </div>
           <a href="/profile" class="tooltip tooltip-bottom" data-tip="Your profile" aria-label="Profile">
             <div class="avatar avatar-placeholder transition-transform hover:scale-110">
-              <div class="bg-warning text-warning-content w-11 rounded-full ring-2 ring-base-content/80 ring-offset-2 ring-offset-base-100">
-                <span class="text-sm font-bold" id="avatar-initials">{{ user.username[:2]|upper }}</span>
+              <div class="w-11 rounded-full text-xl flex items-center justify-center ring-2 ring-base-content/80 ring-offset-2 ring-offset-base-100" style="background:{{ avatar.color }}">
+                <span id="avatar-initials">{{ avatar.emoji }}</span>
               </div>
             </div>
           </a>
@@ -66,11 +76,13 @@
           <li><a href="/play-with-friend">👥 Play With Friend</a></li>
           <li><a href="/leaderboard">📊 Leaderboard</a></li>
           <li><a href="/players">👥 Online players</a></li>
+          <li><a href="/challenge/list">🔑 Private challenges</a></li>
+          {% if user and user.role == 'admin' %}
+          <li><a href="/admin/tournaments/new">🛠️ Create tournament</a></li>
+          <li><a href="/admin">⚙️ Admin panel</a></li>
+          {% endif %}
         </ul>
         <div class="mt-auto flex flex-col gap-2">
-          {% if user and user.role == 'admin' %}
-          <a href="/admin" class="btn btn-outline w-full">Admin</a>
-          {% endif %}
           <button id="howto-btn" class="btn btn-warning w-full">How to play</button>
         </div>
       </aside>
@@ -82,7 +94,7 @@
       <h3 class="text-lg font-bold">How to play</h3>
       <ol class="list-decimal ml-5 mt-3 space-y-2 opacity-90">
         <li>Each round gives both players the same letters chosen by the admin.</li>
-        <li>Type an English word using only those letters, without repeating a letter.</li>
+        <li>Type an English word using only those letters; letters may be reused and words cannot be repeated in a round.</li>
         <li>Longer words earn more points and fire your tank at the opponent.</li>
         <li>Armor absorbs damage first, then health. Zero health ends the match.</li>
         <li>After all rounds, the player with more points wins; ties trigger sudden death.</li>
