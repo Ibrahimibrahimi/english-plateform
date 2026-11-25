@@ -1,73 +1,131 @@
 {% extends "base.html" %}
+{% from "_components.html" import icon %}
 {% block title %}SpellBattle | Profile{% endblock %}
 {% block page %}profile{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-5xl flex flex-col gap-6">
+<div class="page-shell flex flex-col gap-6">
   {% if user %}
-  <div class="card bg-base-100 border border-base-300">
-    <div class="card-body">
-      <div class="flex items-center gap-4">
-        <div class="avatar avatar-placeholder">
-          <div id="profile-avatar" class="w-16 rounded-full text-3xl flex items-center justify-center overflow-hidden"{% if not avatar.image_url %} style="background:{{ avatar.color }}"{% endif %}>
-            {% if avatar.image_url %}<img src="{{ avatar.image_url }}" alt="Your avatar" class="h-full w-full object-cover" />{% else %}{{ avatar.emoji }}{% endif %}
-          </div>
-        </div>
-        <div>
-          <h1 class="card-title text-2xl">{{ user.username }}</h1>
-          <p class="text-sm opacity-70">{{ user.email }} · {{ user.role }}</p>
-        </div>
-      </div>
-      <div class="mt-6">
-        <h2 class="font-bold mb-2">Choose your profile picture</h2>
-        <div id="avatar-picker" class="flex flex-wrap gap-3">
-          {% for key, option in avatars.items() %}
-          <button type="button" class="avatar-option border-2 rounded-full p-1 {{ 'border-warning' if key == current_avatar else 'border-transparent' }}" data-key="{{ key }}" title="{{ option.label }}">
-            <span class="w-12 h-12 rounded-full text-2xl flex items-center justify-center" style="background:{{ option.color }}">{{ option.emoji }}</span>
-          </button>
-          {% endfor %}
-        </div>
-        <form id="avatar-upload-form" class="flex flex-wrap items-center gap-2 mt-4">
-          <input id="avatar-file" name="image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" class="file-input file-input-bordered file-input-sm" required />
-          <button class="btn btn-outline btn-sm" type="submit">Upload picture</button>
-        </form>
-        <p class="text-xs opacity-60 mt-1">PNG, JPEG, GIF or WEBP, up to {{ avatar_max_bytes // 1024 // 1024 }} MB.</p>
-        <p id="avatar-feedback" class="text-sm mt-2 opacity-70"></p>
-      </div>
-      <div class="stats stats-vertical lg:stats-horizontal shadow mt-4 w-full">
-        <div class="stat"><div class="stat-title">Learning points</div><div class="stat-value text-warning" id="stat-points">{{ user.lifetime_learning_points }}</div></div>
-        <div class="stat"><div class="stat-title">Record</div><div class="stat-value" id="stat-record">{{ user.wins }} / {{ user.losses }}</div></div>
-        <div class="stat"><div class="stat-title">Tournaments</div><div class="stat-value" id="stat-tournaments">{{ user.tournaments_played }}</div></div>
-      </div>
-      <form id="username-form" class="flex gap-2 mt-6 max-w-md">
-        <input id="new-username" class="input input-bordered flex-1" value="{{ user.username }}" minlength="3" maxlength="50" required />
-        <button class="btn btn-outline" type="submit">Rename</button>
-      </form>
+  <div class="page-head fade-in">
+    <div>
+      <span class="eyebrow">Player dossier</span>
+      <h1 id="profile-name">{{ user.username }}</h1>
+      <p>{{ user.email }} · {{ user.role }}</p>
     </div>
+    <a href="/leaderboard" class="btn btn-outline gap-2">{{ icon("chart", "h-4 w-4") }}View leaderboard</a>
   </div>
+
+  <section class="glow-panel panel-pad fade-in">
+    <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
+      <div id="profile-avatar" class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-4xl ring-2 ring-warning/60 ring-offset-2 ring-offset-base-100"{% if not avatar.image_url %} style="background:{{ avatar.color }}"{% endif %}>
+        {% if avatar.image_url %}<img src="{{ avatar.image_url }}" alt="Your avatar" class="h-full w-full object-cover" />{% else %}{{ avatar.emoji }}{% endif %}
+      </div>
+      <div class="min-w-0 flex-1">
+        <h2 class="font-display text-2xl font-bold">{{ user.username }}</h2>
+        <p class="text-sm opacity-70">Your record in the arena and progress toward the top.</p>
+      </div>
+      <div class="grid w-full grid-cols-3 gap-3 sm:w-auto">
+        <div class="stat-tile"><span>Points</span><strong id="stat-points" class="text-warning">{{ user.lifetime_learning_points }}</strong></div>
+        <div class="stat-tile"><span>Record</span><strong id="stat-record">{{ user.wins }} / {{ user.losses }}</strong></div>
+        <div class="stat-tile"><span>Events</span><strong id="stat-tournaments">{{ user.tournaments_played }}</strong></div>
+      </div>
+    </div>
+    <form id="username-form" class="mt-6 flex max-w-xl flex-col gap-2 sm:flex-row">
+      <label class="form-control flex-1">
+        <span class="label-text font-semibold">Display name</span>
+        <input id="new-username" class="input input-bordered" value="{{ user.username }}" minlength="3" maxlength="50" required />
+      </label>
+      <button class="btn btn-outline self-end" type="submit">Rename</button>
+    </form>
+    <p id="username-feedback" class="mt-2 text-sm opacity-70" aria-live="polite"></p>
+  </section>
+
   <div class="grid gap-6 lg:grid-cols-2">
-    <section class="card bg-base-100 border border-base-300">
-      <div class="card-body"><h2 class="card-title">Match history</h2><div id="history-list" class="text-sm"></div></div>
+    <section class="panel panel-pad fade-in">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("user", "h-5 w-5") }}</span>
+        <div>
+          <h2 class="text-xl font-bold">Choose your profile picture</h2>
+          <p class="text-sm opacity-70">Pick a preset or upload your own.</p>
+        </div>
+      </div>
+      <div id="avatar-picker" class="mt-5 flex flex-wrap gap-3">
+        {% for key, option in avatars.items() %}
+        <button type="button" class="avatar-option rounded-full border-2 p-1 transition hover:scale-105 {{ 'border-warning' if key == current_avatar else 'border-transparent' }}" data-key="{{ key }}" title="{{ option.label }}">
+          <span class="flex h-12 w-12 items-center justify-center rounded-full text-2xl" style="background:{{ option.color }}">{{ option.emoji }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      <form id="avatar-upload-form" class="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input id="avatar-file" name="image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" class="file-input file-input-bordered file-input-sm w-full" required />
+        <button class="btn btn-outline btn-sm" type="submit">Upload picture</button>
+      </form>
+      <p class="mt-2 text-xs opacity-60">PNG, JPEG, GIF or WEBP, up to {{ avatar_max_bytes // 1024 // 1024 }} MB.</p>
+      <p id="avatar-feedback" class="mt-1 text-sm opacity-70" aria-live="polite"></p>
     </section>
-    <section class="card bg-base-100 border border-base-300">
-      <div class="card-body"><h2 class="card-title">Progress</h2><canvas id="progress-chart" height="220"></canvas></div>
+
+    <section class="panel panel-pad fade-in">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("chart", "h-5 w-5") }}</span>
+        <div>
+          <h2 class="text-xl font-bold">Progress</h2>
+          <p class="text-sm opacity-70">Points scored in recent battles.</p>
+        </div>
+      </div>
+      <canvas id="progress-chart" class="mt-4 w-full" height="220"></canvas>
+    </section>
+
+    <section class="panel panel-pad fade-in lg:col-span-2">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-secondary/40 bg-secondary/10 text-secondary">{{ icon("play", "h-5 w-5") }}</span>
+        <div>
+          <h2 class="text-xl font-bold">Match history</h2>
+          <p class="text-sm opacity-70">Your latest arena results.</p>
+        </div>
+      </div>
+      <div id="history-list" class="mt-4 text-sm"><span class="loading loading-spinner loading-sm"></span></div>
     </section>
   </div>
   {% else %}
-  <div class="grid gap-6 md:grid-cols-2">
-    <form id="login-form" class="card bg-base-100 border border-base-300">
-      <div class="card-body"><h2 class="card-title">Log in</h2>
-        <input name="email" type="email" class="input input-bordered" placeholder="Email" required />
-        <input name="password" type="password" class="input input-bordered" placeholder="Password" required />
-        <button class="btn btn-warning" type="submit">Log in</button>
+  <div class="page-head fade-in">
+    <div>
+      <span class="eyebrow">Player access</span>
+      <h1>Enter the arena</h1>
+      <p>Log in or create an account to challenge players, earn points and join tournaments.</p>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <form id="login-form" class="panel panel-pad fade-in">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-warning/40 bg-warning/10 text-warning">{{ icon("arrow", "h-5 w-5") }}</span>
+        <div>
+          <h2 class="text-xl font-bold">Log in</h2>
+          <p class="text-sm opacity-70">Welcome back to the command deck.</p>
+        </div>
       </div>
+      <div class="mt-5 flex flex-col gap-3">
+        <label class="form-control"><span class="label-text font-semibold">Email</span><input name="email" type="email" class="input input-bordered" placeholder="you@example.com" autocomplete="email" required /></label>
+        <label class="form-control"><span class="label-text font-semibold">Password</span><input name="password" type="password" class="input input-bordered" placeholder="Your password" autocomplete="current-password" required /></label>
+      </div>
+      <p id="login-error" class="mt-3 hidden text-sm text-error" role="alert" aria-live="polite"></p>
+      <button class="btn btn-warning mt-5 w-full gap-2" type="submit">{{ icon("arrow", "h-4 w-4") }}Log in</button>
     </form>
-    <form id="signup-form" class="card bg-base-100 border border-base-300">
-      <div class="card-body"><h2 class="card-title">Create an account</h2>
-        <input name="username" class="input input-bordered" placeholder="Username" minlength="3" required />
-        <input name="email" type="email" class="input input-bordered" placeholder="Email" required />
-        <input name="password" type="password" class="input input-bordered" placeholder="Password (8+ chars)" minlength="8" required />
-        <button class="btn btn-outline" type="submit">Sign up</button>
+
+    <form id="signup-form" class="panel panel-pad fade-in">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("plus", "h-5 w-5") }}</span>
+        <div>
+          <h2 class="text-xl font-bold">Create an account</h2>
+          <p class="text-sm opacity-70">Start with a clean slate and climb the board.</p>
+        </div>
       </div>
+      <div class="mt-5 flex flex-col gap-3">
+        <label class="form-control"><span class="label-text font-semibold">Username</span><input name="username" class="input input-bordered" placeholder="Spell master" minlength="3" maxlength="50" autocomplete="username" required /></label>
+        <label class="form-control"><span class="label-text font-semibold">Email</span><input name="email" type="email" class="input input-bordered" placeholder="you@example.com" autocomplete="email" required /></label>
+        <label class="form-control"><span class="label-text font-semibold">Password</span><input name="password" type="password" class="input input-bordered" placeholder="At least 8 characters" minlength="8" autocomplete="new-password" required /></label>
+      </div>
+      <p id="signup-error" class="mt-3 hidden text-sm text-error" role="alert" aria-live="polite"></p>
+      <button class="btn btn-outline mt-5 w-full gap-2" type="submit">{{ icon("plus", "h-4 w-4") }}Create account</button>
     </form>
   </div>
   {% endif %}

@@ -1,20 +1,56 @@
 import { escapeHtml, request } from "./api.js";
 import { toast } from "./ui.js";
 
+const showError = (id, message) => {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.textContent = message;
+  element.classList.remove("hidden");
+};
+
+const clearError = (id) => {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.textContent = "";
+  element.classList.add("hidden");
+};
+
+const redirectPath = () => {
+  const next = new URLSearchParams(location.search).get("next");
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return "/profile";
+  return next;
+};
+
+const busy = async (button, task) => {
+  if (!button) return task();
+  button.disabled = true;
+  button.classList.add("opacity-70");
+  try {
+    return await task();
+  } finally {
+    button.disabled = false;
+    button.classList.remove("opacity-70");
+  }
+};
+
 const loginForm = document.getElementById("login-form");
 if (loginForm) {
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    clearError("login-error");
     const form = new FormData(loginForm);
-    try {
-      await request("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
-      });
-      location.reload();
-    } catch (error) {
-      toast(error.message, "error");
-    }
+    await busy(loginForm.querySelector("button[type='submit']"), async () => {
+      try {
+        await request("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+        });
+        location.href = redirectPath();
+      } catch (error) {
+        showError("login-error", error.message);
+        toast(error.message, "error");
+      }
+    });
   });
 }
 
@@ -22,20 +58,24 @@ const signupForm = document.getElementById("signup-form");
 if (signupForm) {
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    clearError("signup-error");
     const form = new FormData(signupForm);
-    try {
-      await request("/api/auth/signup", {
-        method: "POST",
-        body: JSON.stringify({
-          username: form.get("username"),
-          email: form.get("email"),
-          password: form.get("password"),
-        }),
-      });
-      location.reload();
-    } catch (error) {
-      toast(error.message, "error");
-    }
+    await busy(signupForm.querySelector("button[type='submit']"), async () => {
+      try {
+        await request("/api/auth/signup", {
+          method: "POST",
+          body: JSON.stringify({
+            username: form.get("username"),
+            email: form.get("email"),
+            password: form.get("password"),
+          }),
+        });
+        location.href = redirectPath();
+      } catch (error) {
+        showError("signup-error", error.message);
+        toast(error.message, "error");
+      }
+    });
   });
 }
 
@@ -43,16 +83,22 @@ const usernameForm = document.getElementById("username-form");
 if (usernameForm) {
   usernameForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    try {
-      await request("/api/me", {
-        method: "PATCH",
-        body: JSON.stringify({ username: document.getElementById("new-username").value }),
-      });
-      toast("Username updated", "success");
-      location.reload();
-    } catch (error) {
-      toast(error.message, "error");
-    }
+    const feedback = document.getElementById("username-feedback");
+    await busy(usernameForm.querySelector("button[type='submit']"), async () => {
+      try {
+        const user = await request("/api/me", {
+          method: "PATCH",
+          body: JSON.stringify({ username: document.getElementById("new-username").value }),
+        });
+        document.getElementById("profile-name")?.replaceChildren(user.username);
+        document.getElementById("account-username")?.replaceChildren(user.username);
+        if (feedback) feedback.textContent = "Display name updated.";
+        toast("Username updated", "success");
+      } catch (error) {
+        if (feedback) feedback.textContent = error.message;
+        toast(error.message, "error");
+      }
+    });
   });
 }
 
@@ -97,28 +143,30 @@ if (avatarForm) {
     if (!file) return;
     const payload = new FormData();
     payload.append("image", file);
-    try {
-      const user = await request("/api/me/avatar", { method: "POST", body: payload });
-      const image = `<img src="${escapeHtml(user.avatar.image_url)}" alt="Your avatar" class="h-full w-full object-cover" />`;
-      const preview = document.getElementById("profile-avatar");
-      if (preview) {
-        preview.innerHTML = image;
-        preview.style.background = "";
+    await busy(avatarForm.querySelector("button[type='submit']"), async () => {
+      try {
+        const user = await request("/api/me/avatar", { method: "POST", body: payload });
+        const image = `<img src="${escapeHtml(user.avatar.image_url)}" alt="Your avatar" class="h-full w-full object-cover" />`;
+        const preview = document.getElementById("profile-avatar");
+        if (preview) {
+          preview.innerHTML = image;
+          preview.style.background = "";
+        }
+        const navAvatar = document.getElementById("avatar-initials");
+        if (navAvatar) {
+          navAvatar.innerHTML = image;
+          navAvatar.style.background = "";
+        }
+        avatarPicker?.querySelectorAll(".avatar-option").forEach((option) => {
+          option.classList.remove("border-warning");
+          option.classList.add("border-transparent");
+        });
+        document.getElementById("avatar-feedback").textContent = "Profile picture uploaded.";
+        toast("Profile picture updated", "success");
+      } catch (error) {
+        toast(error.message, "error");
       }
-      const navAvatar = document.getElementById("avatar-initials");
-      if (navAvatar) {
-        navAvatar.innerHTML = image;
-        navAvatar.style.background = "";
-      }
-      avatarPicker?.querySelectorAll(".avatar-option").forEach((option) => {
-        option.classList.remove("border-warning");
-        option.classList.add("border-transparent");
-      });
-      document.getElementById("avatar-feedback").textContent = "Profile picture uploaded.";
-      toast("Profile picture updated", "success");
-    } catch (error) {
-      toast(error.message, "error");
-    }
+    });
   });
 }
 
@@ -129,14 +177,23 @@ if (historyList) {
     document.getElementById("stat-points").textContent = stats.lifetime_learning_points;
     document.getElementById("stat-record").textContent = `${stats.wins} / ${stats.losses}`;
     document.getElementById("stat-tournaments").textContent = stats.tournaments_played;
-    historyList.innerHTML = history.length ? history.map((match) => `<div class="flex justify-between border-b border-base-300 py-2"><span>#${match.id} · ${match.mode}</span><span class="${match.won ? "text-success" : "text-error"}">${match.won ? "Won" : "Lost"} · ${match.points} pts</span></div>`).join("") : "<p class='opacity-70'>No matches yet.</p>";
+    historyList.innerHTML = history.length
+      ? `<div class="divide-y divide-base-300">${history.map((match) => `
+          <div class="flex items-center justify-between gap-3 py-2">
+            <span class="truncate">#${match.id} · ${escapeHtml(match.mode)}</span>
+            <span class="badge ${match.won ? "badge-success" : "badge-error"} badge-sm shrink-0">${match.won ? "Won" : "Lost"} · ${match.points} pts</span>
+          </div>`).join("")}</div>`
+      : `<div class="empty-state"><strong>No matches yet</strong><span>Your first battle will appear here.</span></div>`;
     const canvas = document.getElementById("progress-chart");
     if (canvas && history.length) {
       const ctx = canvas.getContext("2d");
       const points = history.slice().reverse().map((match) => match.points);
       const max = Math.max(...points, 10);
-      ctx.strokeStyle = "#f59e0b";
+      const amber = getComputedStyle(document.documentElement).getPropertyValue("--sb-amber").trim() || "#f59e0b";
+      ctx.strokeStyle = amber;
       ctx.lineWidth = 3;
+      ctx.shadowColor = amber;
+      ctx.shadowBlur = 12;
       ctx.beginPath();
       points.forEach((point, index) => {
         const x = (index / Math.max(1, points.length - 1)) * (canvas.width - 20) + 10;
@@ -147,6 +204,6 @@ if (historyList) {
       ctx.stroke();
     }
   } catch (error) {
-    historyList.textContent = error.message;
+    historyList.innerHTML = `<div class="empty-state"><strong>History unavailable</strong><span>${escapeHtml(error.message)}</span></div>`;
   }
 }
