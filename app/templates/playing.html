@@ -3,17 +3,21 @@
 {% block title %}SpellBattle | Battle{% endblock %}
 {% block page %}playing{% endblock %}
 {% block content %}
-<div id="match-meta" data-match-id="{{ match_id }}" class="mx-auto max-w-6xl flex flex-col gap-4">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-2xl font-extrabold">Battle #{{ match_id }}</h1>
-    <div class="flex items-center gap-3">
-      <span id="round-label" class="badge badge-warning">Round 0 / 5</span>
-      <span id="timer" class="font-mono text-lg">60s</span>
-      <span id="connection" class="badge">Connecting...</span>
+<div id="match-meta" data-match-id="{{ match_id }}" class="page-shell flex flex-col gap-4">
+  <div class="page-head fade-in">
+    <div>
+      <span class="eyebrow">Live duel</span>
+      <h1>Battle <span class="glow-text">#{{ match_id }}</span></h1>
+      <p>Spell faster than your rival. Every valid word becomes firepower.</p>
+    </div>
+    <div class="grid grid-cols-3 gap-2 sm:gap-3">
+      <div class="stat-tile"><span>Round</span><strong id="round-label" class="text-sm">Round 0 / 5</strong></div>
+      <div class="stat-tile"><span>Time</span><strong id="timer">60s</strong></div>
+      <div class="stat-tile"><span>Link</span><strong id="connection" class="badge badge-ghost text-sm">Connecting...</strong></div>
     </div>
   </div>
 
-  <section id="arena-stage" class="arena" aria-label="Battle arena">
+  <section id="arena-stage" class="arena fade-in" aria-label="Battle arena">
     <div class="arena-pts arena-pts-p1"><small id="arena-name-p1"></small><b id="arena-pts-p1">0</b> points</div>
     <div class="arena-pts arena-pts-p2"><small id="arena-name-p2"></small><b id="arena-pts-p2">0</b> points</div>
     <div id="arena-lane" class="stage arena-lane"></div>
@@ -30,39 +34,54 @@
 
   <div class="grid gap-4 md:grid-cols-2">
     {% for side in ["p1", "p2"] %}
-    <section id="card-{{ side }}" class="tank-card rounded-box bg-base-100 p-4">
-      <div class="flex items-center justify-between">
-        <h2 id="name-{{ side }}" class="card-title">Player {{ loop.index }}</h2>
-        <span class="badge badge-warning">Points <b id="points-{{ side }}">0</b></span>
+    <section id="card-{{ side }}" class="panel panel-pad fade-in">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="grid h-8 w-8 place-items-center rounded-lg border border-warning/40 bg-warning/10 text-warning">{{ icon("user" if loop.first else "users", "h-4 w-4") }}</span>
+          <h2 id="name-{{ side }}" class="font-display text-lg font-bold">Player {{ loop.index }}</h2>
+        </div>
+        <span class="badge badge-warning badge-outline">Points <b id="points-{{ side }}">0</b></span>
       </div>
-      <div class="mt-3 text-xs font-semibold">Health <span id="health-text-{{ side }}" class="float-right">100</span></div>
-      <div class="bar-track"><div id="health-bar-{{ side }}" class="bar-fill bar-health"></div></div>
-      <div class="mt-2 text-xs font-semibold">Armor <span id="armor-text-{{ side }}" class="float-right">60</span></div>
-      <div class="bar-track"><div id="armor-bar-{{ side }}" class="bar-fill bar-armor"></div></div>
-      <div class="mt-3 flex items-center justify-between text-sm">
-        <span>Attack <b id="attack-{{ side }}">6</b></span>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <div>
+          <div class="flex justify-between text-xs font-semibold uppercase tracking-wider"><span>Health</span><span id="health-text-{{ side }}">100</span></div>
+          <div class="bar-track mt-1"><div id="health-bar-{{ side }}" class="bar-fill bar-health"></div></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-xs font-semibold uppercase tracking-wider"><span>Armor</span><span id="armor-text-{{ side }}">60</span></div>
+          <div class="bar-track mt-1"><div id="armor-bar-{{ side }}" class="bar-fill bar-armor"></div></div>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-base-300 pt-3 text-sm">
+        <span>Attack <b class="text-warning" id="attack-{{ side }}">6</b></span>
         <span>Skill <b id="skill-{{ side }}">-</b></span>
-        <span id="status-{{ side }}"></span>
+        <span id="status-{{ side }}" class="badge badge-ghost badge-sm"></span>
       </div>
     </section>
     {% endfor %}
   </div>
 
-  <section class="tank-card rounded-box bg-base-100 p-5">
+  <section class="panel panel-pad fade-in">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h2 class="card-title">Round letters</h2>
-      <span id="letters-hint" class="text-sm opacity-70">Build an English word from these letters (letters may be reused)</span>
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-primary/40 bg-primary/10 text-primary">{{ icon("plus", "h-5 w-5") }}</span>
+        <div>
+          <h2 class="text-xl font-bold">Round letters</h2>
+          <p class="text-sm opacity-70">Build a word, then fire.</p>
+        </div>
+      </div>
+      <span id="letters-hint" class="text-sm opacity-70">Letters may be reused; each word is single-use per round.</span>
     </div>
-    <div id="letters" class="flex flex-wrap gap-2 mt-3"></div>
-    <form id="answer-form" class="flex gap-2 mt-5">
-      <input id="word-input" class="input input-bordered flex-1 uppercase" placeholder="Type your word" autocomplete="off" required />
-      <button class="btn btn-warning" type="submit">Fire</button>
+    <div id="letters" class="mt-4 flex min-h-12 flex-wrap gap-2"></div>
+    <form id="answer-form" class="mt-5 flex flex-col gap-2 sm:flex-row">
+      <input id="word-input" class="input input-bordered flex-1 uppercase tracking-[0.2em]" placeholder="Type your word" autocomplete="off" required />
+      <button class="btn btn-warning gap-2 sm:w-36" type="submit">{{ icon("arrow", "h-4 w-4") }}Fire</button>
     </form>
-    <div class="flex flex-wrap gap-2 mt-4">
-      <button id="skill-btn" class="btn btn-outline btn-sm">Use special (Ctrl+0)</button>
-      <button id="health-btn" class="btn btn-outline btn-sm">+20% health (Ctrl+1)</button>
-      <button id="armor-btn" class="btn btn-outline btn-sm">+15% armor (Ctrl+2)</button>
-      <button id="regen-skill-btn" class="btn btn-outline btn-sm">Draw skill (Ctrl+3)</button>
+    <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <button id="skill-btn" class="skill-button btn btn-outline btn-sm">Use special <kbd class="kbd kbd-sm">Ctrl+0</kbd></button>
+      <button id="health-btn" class="skill-button btn btn-outline btn-sm">+20% health <kbd class="kbd kbd-sm">Ctrl+1</kbd></button>
+      <button id="armor-btn" class="skill-button btn btn-outline btn-sm">+15% armor <kbd class="kbd kbd-sm">Ctrl+2</kbd></button>
+      <button id="regen-skill-btn" class="skill-button btn btn-outline btn-sm">Draw skill <kbd class="kbd kbd-sm">Ctrl+3</kbd></button>
     </div>
   </section>
 
@@ -108,9 +127,16 @@
       </div>
     </div>
   </section>
-  <section class="tank-card rounded-box bg-base-100 p-4">
-    <h2 class="card-title text-lg">Battle log</h2>
-    <ul id="event-log" class="text-sm mt-2 max-h-48 overflow-y-auto"></ul>
+
+  <section class="panel panel-pad fade-in">
+    <div class="flex items-center gap-3">
+      <span class="grid h-10 w-10 place-items-center rounded-xl border border-secondary/40 bg-secondary/10 text-secondary">{{ icon("chart", "h-5 w-5") }}</span>
+      <div>
+        <h2 class="text-xl font-bold">Battle log</h2>
+        <p class="text-sm opacity-70">Words, skills and turning points.</p>
+      </div>
+    </div>
+    <ul id="event-log" class="event-log mt-4 max-h-52 overflow-y-auto text-sm"></ul>
   </section>
 </div>
 {% endblock %}

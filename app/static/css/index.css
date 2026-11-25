@@ -432,6 +432,24 @@ h1, h2, h3, h4, .font-display {
   color: var(--sb-text);
 }
 
+.skill-button { justify-content: space-between; gap: 0.5rem; }
+.skill-button kbd { opacity: 0.65; }
+
+.event-log {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0 0.5rem 0 0;
+  list-style: none;
+}
+
+.event-log li {
+  border-left: 2px solid color-mix(in oklab, var(--sb-cyan) 55%, transparent);
+  border-radius: 0.35rem;
+  background: color-mix(in oklab, var(--sb-surface-2) 72%, transparent);
+  padding: 0.35rem 0.7rem;
+}
+
 .arena {
   --fx-red: #e0474c;
   --fx-blue: #1c7ed6;
