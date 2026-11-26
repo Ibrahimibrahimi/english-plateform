@@ -7,7 +7,7 @@ from app.auth import require_admin
 from app.game.tournaments import create_tournament
 from app.game.words import normalize_letters
 from app.models import AdminAction, LetterSet, Tournament
-from app.validation import clean_text
+from app.validation import clean_text, parse_bool
 
 router = Blueprint("admin", __name__, url_prefix="/admin/api")
 
@@ -72,6 +72,7 @@ def tournaments():
             "id": tournament.id,
             "name": tournament.name,
             "key": tournament.key,
+            "requires_key": bool(tournament.requires_key),
             "status": tournament.status,
             "max_players": tournament.max_players,
             "allowed_letters": tournament.allowed_letters,
@@ -97,6 +98,7 @@ def create_tournament_admin():
             "name": tournament.name,
             "max_players": tournament.max_players,
             "allowed_letters": tournament.allowed_letters,
+            "requires_key": bool(tournament.requires_key),
         },
     )
     db.commit()
@@ -104,9 +106,42 @@ def create_tournament_admin():
         "id": tournament.id,
         "key": tournament.key,
         "name": tournament.name,
+        "requires_key": bool(tournament.requires_key),
         "max_players": tournament.max_players,
         "allowed_letters": tournament.allowed_letters,
         "skills": tournament.skills,
+    })
+
+
+@router.post("/tournaments/<int:tournament_id>/settings")
+def set_tournament_settings(tournament_id: int):
+    db = g.db
+    admin = require_admin()
+    payload = request.get_json(silent=True) or {}
+    tournament = db.get(Tournament, tournament_id)
+    if tournament is None:
+        abort(404, description="Tournament not found")
+
+    changed = {}
+    if "status" in payload:
+        status = clean_text(payload.get("status", ""), configs.KEY_MAX_LENGTH)
+        if status not in configs.TOURNAMENT_STATUSES:
+            abort(400, description="Invalid status")
+        tournament.status = status
+        changed["status"] = status
+    if "requires_key" in payload:
+        requires_key = parse_bool(payload.get("requires_key"), label="requires_key")
+        tournament.requires_key = requires_key
+        changed["requires_key"] = requires_key
+    if not changed:
+        abort(400, description="No settings provided")
+
+    log(db, admin.id, "tournament.settings", {"id": tournament_id, **changed})
+    db.commit()
+    return jsonify({
+        "id": tournament_id,
+        "status": tournament.status,
+        "requires_key": bool(tournament.requires_key),
     })
 
 

@@ -7,7 +7,15 @@ from app.db import SessionLocal
 from app.game.arena import arena
 from app.game.rules import new_player
 from app.game.words import normalize_letters
-from app.models import LetterSet, Match, MatchEvent, MatchParticipant, Round, User
+from app.models import (
+    LetterSet,
+    Match,
+    MatchEvent,
+    MatchParticipant,
+    Round,
+    TournamentParticipant,
+    User,
+)
 
 
 def new_key(prefix: str = "") -> str:
@@ -148,9 +156,16 @@ def register_match(db, match: Match):
     if existing is not None:
         for user_id, state in players.items():
             existing.add_player(user_id, state)
+        if existing.status == "waiting" and existing.on_waiting_timeout is not None:
+            existing.arm_waiting_timeout()
         return existing
     if match.status == "finished":
         return None
+    on_waiting_timeout = (
+        abandon_waiting_tournament_match
+        if match.tournament_id is not None and match.status == "waiting"
+        else None
+    )
     live = arena.create(
         match.id,
         players,
@@ -160,11 +175,14 @@ def register_match(db, match: Match):
         on_event=record_event,
         on_start=mark_started,
         on_round=mark_round,
+        on_waiting_timeout=on_waiting_timeout,
         infinite=match.end_mode == configs.CHALLENGE_END_MODE_INFINITE,
         start_delay_seconds=match.start_delay_seconds,
     )
     for user_id, state in players.items():
         live.add_player(user_id, state)
+    if live.status == "waiting" and live.on_waiting_timeout is not None:
+        live.arm_waiting_timeout()
     return live
 
 
@@ -176,6 +194,67 @@ def abandon_match(db, match: Match) -> None:
     match.ended_at = datetime.now(UTC)
     for participant in db.query(MatchParticipant).filter_by(match_id=match.id).all():
         participant.status = "finished"
+
+
+def abandon_waiting_tournament_match(match_id: int) -> bool:
+    live = arena.get(match_id)
+    connected_ids: set[int] = set()
+    if live is not None:
+        with live._lock:
+            if live.status != "waiting":
+                return False
+            connected_ids = {uid for uid, state in live.players.items() if state.get("connected")}
+            if len(live.players) == 1 and connected_ids:
+                return False
+            if len(live.players) >= 2 and len(connected_ids) == len(live.players):
+                return False
+    db = SessionLocal()
+    try:
+        match = db.get(Match, match_id)
+        if match is None or match.status != "waiting" or match.tournament_id is None:
+            return False
+        participants = db.query(MatchParticipant).filter_by(match_id=match_id).all()
+        user_ids = [participant.user_id for participant in participants]
+        live = arena.get(match_id)
+        if live is not None:
+            with live._lock:
+                connected_ids = {uid for uid, state in live.players.items() if state.get("connected")}
+        if len(user_ids) == 1 and connected_ids:
+            return False
+        if len(user_ids) >= 2 and len(connected_ids) >= len(user_ids):
+            return False
+        match.status = "finished"
+        match.end_reason = "abandoned"
+        match.ended_at = datetime.now(UTC)
+        for participant in participants:
+            participant.status = "finished"
+        if user_ids:
+            (
+                db.query(TournamentParticipant)
+                .filter(
+                    TournamentParticipant.tournament_id == match.tournament_id,
+                    TournamentParticipant.user_id.in_(user_ids),
+                )
+                .delete(synchronize_session=False)
+            )
+        db.commit()
+    finally:
+        db.close()
+
+    live = arena.get(match_id)
+    if live is not None:
+        with live._lock:
+            live.status = "finished"
+            live._cancel_waiting_timeout_locked()
+            live._cancel_start_locked()
+            if live._timer is not None:
+                live._timer.cancel()
+            for timer in live.disconnect_timers.values():
+                timer.cancel()
+            live.disconnect_timers.clear()
+        live.close_connections(4404)
+        arena.remove(match_id)
+    return True
 
 
 def ensure_match(match_id: int):
@@ -196,13 +275,49 @@ def ensure_match(match_id: int):
         db.close()
 
 
+def _cleanup_stale_waiting_tournaments(db) -> int:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    grace = max(0, configs.TOURNAMENT_WAITING_GRACE_SECONDS)
+    matches = (
+        db.query(Match)
+        .filter(Match.tournament_id.isnot(None), Match.status == "waiting")
+        .all()
+    )
+    cleaned = 0
+    for match in matches:
+        participants = db.query(MatchParticipant).filter_by(match_id=match.id).all()
+        if len(participants) > 1:
+            continue
+        created_at = match.created_at.replace(tzinfo=None) if match.created_at else now
+        if (now - created_at).total_seconds() < grace:
+            continue
+        match.status = "finished"
+        match.end_reason = "abandoned"
+        match.ended_at = datetime.now(UTC)
+        user_ids = [participant.user_id for participant in participants]
+        for participant in participants:
+            participant.status = "finished"
+        if user_ids:
+            (
+                db.query(TournamentParticipant)
+                .filter(
+                    TournamentParticipant.tournament_id == match.tournament_id,
+                    TournamentParticipant.user_id.in_(user_ids),
+                )
+                .delete(synchronize_session=False)
+            )
+        cleaned += 1
+    return cleaned
+
+
 def reconcile_matches() -> None:
     db = SessionLocal()
     try:
         active = db.query(Match).filter(Match.status == "active").all()
         for match in active:
             abandon_match(db, match)
-        if active:
+        cleaned = _cleanup_stale_waiting_tournaments(db)
+        if active or cleaned:
             db.commit()
     finally:
         db.close()

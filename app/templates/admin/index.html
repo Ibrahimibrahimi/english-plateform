@@ -26,6 +26,10 @@
           <input name="max_players" type="number" min="{{ min_players }}" max="{{ max_players }}" value="{{ default_players }}" class="input input-bordered" />
           <input name="allowed_letters" class="input input-bordered uppercase tracking-[0.18em]" value="{{ default_letters }}" />
         </div>
+        <select name="requires_key" class="select select-bordered">
+          <option value="true" selected>Key required</option>
+          <option value="false">Open to everyone</option>
+        </select>
         <fieldset id="skill-options" class="flex flex-wrap gap-2"></fieldset>
         <button class="btn btn-primary btn-sm self-start" type="submit">Create</button>
       </form>

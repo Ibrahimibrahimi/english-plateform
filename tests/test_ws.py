@@ -132,9 +132,10 @@ def test_tournament_match_waits_for_both_connections():
     two_data = signup(two, "tourneywstwo")
     first = one.post(f"/api/tournaments/{tournament_payload['id']}/join", json={"key": tournament_payload["key"]})
     assert first.status_code == 200, first.get_data(as_text=True)
+    match_id = first.get_json()["match"]["id"]
     second = two.post(f"/api/tournaments/{tournament_payload['id']}/join", json={"key": tournament_payload["key"]})
     assert second.status_code == 200, second.get_data(as_text=True)
-    match_id = second.get_json()["match"]["id"]
+    assert second.get_json()["match"]["id"] == match_id
 
     live = arena.get(match_id)
     assert live is not None and live.status == "waiting"

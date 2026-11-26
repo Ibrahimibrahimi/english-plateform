@@ -24,6 +24,9 @@ if (meta) {
   const connectionRetry = document.getElementById("connection-retry");
   const connectionLogin = document.getElementById("connection-login");
   const connectionBack = document.getElementById("connection-back");
+  const waitingPanel = document.getElementById("waiting-panel");
+  const waitingTournament = document.getElementById("waiting-tournament");
+  const waitingDetail = document.getElementById("waiting-detail");
   const controls = [
     document.getElementById("answer-form")?.querySelector("button"),
     wordInput,
@@ -77,13 +80,19 @@ if (meta) {
     for (const control of controls) control.disabled = !enabled;
   };
 
+  const tournamentBackHref = () => (tournamentId ? `/tournament/${tournamentId}` : "/play");
+
   const showConnection = ({ title, detail, canRetry = false, needLogin = false, canGoBack = false }) => {
     if (!connectionBanner) return;
     connectionTitle.textContent = title;
     connectionDetail.textContent = detail;
     connectionRetry?.classList.toggle("hidden", !canRetry);
     connectionLogin?.classList.toggle("hidden", !needLogin);
-    connectionBack?.classList.toggle("hidden", !canGoBack);
+    if (connectionBack) {
+      connectionBack.href = tournamentBackHref();
+      connectionBack.textContent = tournamentId ? "Back to tournament" : "Back to play";
+      connectionBack.classList.toggle("hidden", !canGoBack);
+    }
     connectionBanner.classList.remove("hidden");
   };
 
@@ -96,8 +105,25 @@ if (meta) {
     }
   };
 
+  const showWaitingPanel = () => {
+    if (!waitingPanel) return;
+    waitingPanel.classList.remove("hidden");
+    if (waitingTournament) {
+      waitingTournament.href = tournamentBackHref();
+      waitingTournament.classList.toggle("hidden", !tournamentId);
+    }
+    if (waitingDetail) {
+      waitingDetail.textContent = tournamentId
+        ? "The match starts automatically when another player joins and connects. If you leave, you'll have a short grace period to reconnect."
+        : "The match starts automatically when both players connect.";
+    }
+  };
+
+  const hideWaitingPanel = () => waitingPanel?.classList.add("hidden");
+
   const showStartCountdown = (seconds) => {
     stopStartCountdown();
+    hideWaitingPanel();
     let remaining = Math.max(1, Number(seconds) || 0);
     setConnectionBadge("Starting soon", "badge-accent");
     roundLabel.textContent = "Get ready";
@@ -285,9 +311,11 @@ if (meta) {
       setConnectionBadge("Waiting for opponent", "badge-accent");
       roundLabel.textContent = "Lobby";
       timer.textContent = "--";
+      showWaitingPanel();
       return;
     }
     stopStartCountdown();
+    hideWaitingPanel();
     if (payload.status === "finished") {
       setControlsEnabled(false);
       fx.end(payload.winner_id == null ? null : sideById[payload.winner_id]);
@@ -345,7 +373,9 @@ if (meta) {
         setConnectionBadge("Unavailable", "badge-error");
         showConnection({
           title: "Cannot join match",
-          detail: "This match is no longer available to join.",
+          detail: tournamentId
+            ? "This waiting lobby is no longer available. You can rejoin the tournament."
+            : "This match is no longer available to join.",
           canGoBack: true,
         });
         return;

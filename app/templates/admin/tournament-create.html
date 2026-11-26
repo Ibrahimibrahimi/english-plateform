@@ -27,6 +27,13 @@
           <input name="allowed_letters" class="input input-bordered uppercase tracking-[0.18em]" value="{{ default_letters }}" />
         </label>
       </div>
+      <label class="form-control max-w-xs">
+        <span class="label-text font-semibold">Join access</span>
+        <select name="requires_key" class="select select-bordered">
+          <option value="true" selected>Key required</option>
+          <option value="false">Open to everyone</option>
+        </select>
+      </label>
       <fieldset>
         <legend class="label-text mb-2 font-semibold">Enabled special moves</legend>
         <div id="skill-options" class="flex flex-wrap gap-2"></div>

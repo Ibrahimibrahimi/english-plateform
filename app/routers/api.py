@@ -656,6 +656,7 @@ def list_tournaments():
             "name": tournament.name,
             "description": tournament.description,
             "status": tournament.status,
+            "requires_key": bool(tournament.requires_key),
             "max_players": tournament.max_players,
             "players": db.query(func.count(TournamentParticipant.id))
             .filter(TournamentParticipant.tournament_id == tournament.id)
@@ -694,11 +695,32 @@ def tournament_details(tournament_id: int):
         .order_by(Match.id)
         .all()
     )
+    viewer = current_user()
+    viewer_participant = None
+    viewer_match = None
+    if viewer is not None:
+        participant_row = (
+            db.query(TournamentParticipant)
+            .filter_by(tournament_id=tournament_id, user_id=viewer.id)
+            .first()
+        )
+        if participant_row is not None:
+            viewer_participant = participant_row.status
+            match = (
+                db.query(Match)
+                .join(MatchParticipant, MatchParticipant.match_id == Match.id)
+                .filter(Match.tournament_id == tournament_id, MatchParticipant.user_id == viewer.id)
+                .order_by(Match.id.desc())
+                .first()
+            )
+            if match is not None:
+                viewer_match = _match_info(match)
     return jsonify({
         "id": tournament.id,
         "name": tournament.name,
         "description": tournament.description,
         "status": tournament.status,
+        "requires_key": bool(tournament.requires_key),
         "max_players": tournament.max_players,
         "allowed_letters": tournament.allowed_letters,
         "skills": [
@@ -713,19 +735,102 @@ def tournament_details(tournament_id: int):
             {"id": user.id, "username": user.username, "status": status} for user, status in participants
         ],
         "matches": [_match_info(match) for match in matches],
+        "viewer_participant": viewer_participant,
+        "viewer_match": viewer_match,
     })
 
 
+def _tournament_match_for_user(db, tournament_id: int, user_id: int) -> Match | None:
+    return (
+        db.query(Match)
+        .join(MatchParticipant, MatchParticipant.match_id == Match.id)
+        .filter(Match.tournament_id == tournament_id, MatchParticipant.user_id == user_id)
+        .order_by(Match.id.desc())
+        .first()
+    )
+
+
+def _eligible_waiting_tournament_match(db, tournament: Tournament, user_id: int) -> Match | None:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    grace = max(0, configs.TOURNAMENT_WAITING_GRACE_SECONDS)
+    matches = (
+        db.query(Match)
+        .filter(Match.tournament_id == tournament.id, Match.status == "waiting")
+        .order_by(Match.id.asc())
+        .all()
+    )
+    for match in matches:
+        participants = db.query(MatchParticipant).filter_by(match_id=match.id).all()
+        if len(participants) != 1:
+            continue
+        opponent = participants[0]
+        if opponent.user_id == user_id:
+            continue
+        tp = (
+            db.query(TournamentParticipant)
+            .filter_by(tournament_id=tournament.id, user_id=opponent.user_id)
+            .first()
+        )
+        if tp is None or tp.status != "waiting":
+            continue
+        live = arena.get(match.id)
+        connected = bool(live and live.players.get(opponent.user_id, {}).get("connected"))
+        created_at = match.created_at.replace(tzinfo=None) if match.created_at else now
+        if connected or (now - created_at).total_seconds() <= grace:
+            return match
+    return None
+
+
+def _ensure_waiting_tournament_match(db, tournament: Tournament, user: User) -> Match:
+    participant = (
+        db.query(TournamentParticipant)
+        .filter_by(tournament_id=tournament.id, user_id=user.id)
+        .first()
+    )
+    if participant is None:
+        abort(409, description="Already joined")
+    participant.status = "waiting"
+    match = _create_match(
+        db,
+        [user.id],
+        tournament.allowed_letters,
+        tournament.skills,
+        "tournament",
+        tournament_id=tournament.id,
+        start_delay_seconds=0,
+        end_mode=configs.CHALLENGE_END_MODE_ROUNDS,
+    )
+    return match
+
+
 def _join_tournament(db, tournament: Tournament, user: User) -> dict:
-    if tournament.status != "open":
-        abort(409, description="Tournament is not open")
     existing = (
         db.query(TournamentParticipant)
         .filter_by(tournament_id=tournament.id, user_id=user.id)
         .first()
     )
-    if existing:
-        abort(409, description="Already joined")
+    if existing is not None:
+        current = _tournament_match_for_user(db, tournament.id, user.id)
+        if current is not None:
+            if current.status == "finished":
+                abort(409, description="Already joined")
+            db.commit()
+            register_match(db, current)
+            return {"tournament_id": tournament.id, "match": _match_info(current)}
+        match = _ensure_waiting_tournament_match(db, tournament, user)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            abort(409, description="Already joined")
+        register_match(db, match)
+        live = arena.get(match.id)
+        if live is not None:
+            live.arm_waiting_timeout()
+        return {"tournament_id": tournament.id, "match": _match_info(match)}
+
+    if tournament.status != "open":
+        abort(409, description="Tournament is not open")
     count = (
         db.query(func.count(TournamentParticipant.id))
         .filter(TournamentParticipant.tournament_id == tournament.id)
@@ -739,40 +844,53 @@ def _join_tournament(db, tournament: Tournament, user: User) -> dict:
     )
     db.add(participant)
     db.flush()
-    opponent = (
-        db.query(TournamentParticipant)
-        .filter(
-            TournamentParticipant.tournament_id == tournament.id,
-            TournamentParticipant.user_id != user.id,
-            TournamentParticipant.status == "waiting",
-        )
-        .order_by(TournamentParticipant.id)
-        .first()
-    )
-    result = {"tournament_id": tournament.id, "match": None}
+
+    waiting_match = _eligible_waiting_tournament_match(db, tournament, user.id)
     try:
-        if opponent is not None:
-            opponent.status = "matched"
+        if waiting_match is not None:
+            opponent_participant = (
+                db.query(MatchParticipant)
+                .filter(MatchParticipant.match_id == waiting_match.id, MatchParticipant.user_id != user.id)
+                .first()
+            )
+            if opponent_participant is None:
+                waiting_match = None
+        if waiting_match is not None and opponent_participant is not None:
+            opponent_tp = (
+                db.query(TournamentParticipant)
+                .filter_by(tournament_id=tournament.id, user_id=opponent_participant.user_id)
+                .first()
+            )
+            if opponent_tp is not None:
+                opponent_tp.status = "matched"
             participant.status = "matched"
-            match = _create_match(
-                db,
-                [opponent.user_id, user.id],
-        tournament.allowed_letters,
-        tournament.skills,
-        "tournament",
-        tournament_id=tournament.id,
-        start_delay_seconds=0,
-        end_mode=configs.CHALLENGE_END_MODE_ROUNDS,
-    )
+            db.add(MatchParticipant(match_id=waiting_match.id, user_id=user.id))
             db.commit()
-            register_match(db, match)
-            result["match"] = _match_info(match)
-        else:
-            db.commit()
+            register_match(db, waiting_match)
+            live = arena.get(waiting_match.id)
+            if live is not None:
+                live.arm_waiting_timeout()
+            return {"tournament_id": tournament.id, "match": _match_info(waiting_match)}
+
+        match = _create_match(
+            db,
+            [user.id],
+            tournament.allowed_letters,
+            tournament.skills,
+            "tournament",
+            tournament_id=tournament.id,
+            start_delay_seconds=0,
+            end_mode=configs.CHALLENGE_END_MODE_ROUNDS,
+        )
+        db.commit()
     except IntegrityError:
         db.rollback()
         abort(409, description="Already joined")
-    return result
+    register_match(db, match)
+    live = arena.get(match.id)
+    if live is not None:
+        live.arm_waiting_timeout()
+    return {"tournament_id": tournament.id, "match": _match_info(match)}
 
 
 @router.post("/tournaments/join")
@@ -797,13 +915,21 @@ def join_tournament(tournament_id: int):
     begin_immediate(db)
     user = require_user()
     payload = body()
-    try:
-        key = clean_key(payload.get("key", ""))
-    except ValueError as exc:
-        abort(400, description=str(exc))
     tournament = db.get(Tournament, tournament_id)
-    if tournament is None or tournament.key != key:
-        abort(404, description="Invalid tournament key")
+    if tournament is None:
+        abort(404, description="Tournament not found")
+    existing = (
+        db.query(TournamentParticipant)
+        .filter_by(tournament_id=tournament.id, user_id=user.id)
+        .first()
+    )
+    if tournament.requires_key and existing is None:
+        try:
+            key = clean_key(payload.get("key", ""))
+        except ValueError as exc:
+            abort(400, description=str(exc))
+        if tournament.key != key:
+            abort(404, description="Invalid tournament key")
     return jsonify(_join_tournament(db, tournament, user))
 
 

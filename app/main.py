@@ -31,6 +31,7 @@ def _seed():
         "VARCHAR(20)",
         f"'{configs.CHALLENGE_END_MODE_ROUNDS}'",
     )
+    ensure_column("tournaments", "requires_key", "BOOLEAN", "TRUE")
     db = SessionLocal()
     try:
         admin_user = db.query(User).filter(User.role == "admin").first()
@@ -52,6 +53,7 @@ def _seed():
                     name=configs.DEFAULT_TOURNAMENT_NAME,
                     description=configs.DEFAULT_TOURNAMENT_DESCRIPTION,
                     key=new_key("T"),
+                    requires_key=configs.DEFAULT_TOURNAMENT_REQUIRES_KEY,
                     max_players=configs.DEFAULT_TOURNAMENT_MAX_PLAYERS,
                     allowed_letters=configs.DEFAULT_LETTERS,
                     skills=",".join(configs.SKILL_CODES),

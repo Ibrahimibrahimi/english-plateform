@@ -61,6 +61,7 @@ class Tournament(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True)
     description: Mapped[str] = mapped_column(String(300), default="")
     key: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    requires_key: Mapped[bool] = mapped_column(Boolean, default=True)
     max_players: Mapped[int] = mapped_column(Integer, default=configs.DEFAULT_TOURNAMENT_MAX_PLAYERS)
     allowed_letters: Mapped[str] = mapped_column(String(30), default="all")
     skills: Mapped[str] = mapped_column(String(300), default="")

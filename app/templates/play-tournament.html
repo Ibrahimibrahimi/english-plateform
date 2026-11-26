@@ -17,12 +17,12 @@
     <a href="/tournament/join" class="panel panel-pad flex flex-col gap-3 transition hover:border-primary/40 fade-in">
       <span class="icon-tile">{{ icon("key", "h-5 w-5") }}</span>
       <h2 class="font-display text-xl font-bold">Use a tournament key</h2>
-      <p class="text-sm opacity-70">Enter the key given by the administrator to join directly.</p>
+      <p class="text-sm opacity-70">Enter the key for key-required tournaments, or browse open events to join instantly.</p>
       <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">Join now {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
   </div>
   <section class="panel panel-pad fade-in">
-    <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("trophy", "h-5 w-5 text-accent") }}Open tournaments</h2>
+    <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold">{{ icon("trophy", "h-5 w-5 text-accent") }}Available tournaments</h2>
     <div id="tournament-list" class="grid gap-3 md:grid-cols-2">{{ loading(2) }}</div>
   </section>
 </div>

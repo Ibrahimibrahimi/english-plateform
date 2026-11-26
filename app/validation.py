@@ -62,6 +62,23 @@ def parse_int(value, *, minimum: int, maximum: int, label: str, default: int | N
     return number
 
 
+def parse_bool(value, *, default: bool | None = None, label: str = "Value") -> bool:
+    if value is None or value == "":
+        if default is None:
+            raise ValueError(f"{label} is required")
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "on"}:
+        return True
+    if text in {"false", "0", "no", "off"}:
+        return False
+    raise ValueError(f"{label} must be true or false")
+
+
 def clean_avatar(value) -> str:
     """Return a known avatar key, falling back to the configured default."""
     key = clean_text(value, configs.KEY_MAX_LENGTH)

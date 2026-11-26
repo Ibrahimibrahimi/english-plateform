@@ -149,6 +149,7 @@ def test_tournament_keys_are_private_and_join_by_key_works():
     assert all("key" not in item for item in public_list)
     details = app.test_client().get(f"/api/tournaments/{payload['id']}").get_json()
     assert "key" not in details
+    assert details["requires_key"] is True
 
     first_client = app.test_client()
     second_client = app.test_client()
@@ -156,7 +157,50 @@ def test_tournament_keys_are_private_and_join_by_key_works():
     signup(second_client, "keyjointwo")
     first = first_client.post("/api/tournaments/join", json={"key": payload["key"]})
     assert first.status_code == 200, first.get_data(as_text=True)
-    assert first.get_json()["match"] is None
+    assert first.get_json()["match"]["status"] == "waiting"
     second = second_client.post("/api/tournaments/join", json={"key": payload["key"]})
     assert second.status_code == 200, second.get_data(as_text=True)
-    assert second.get_json()["match"] is not None
+    assert second.get_json()["match"]["id"] == first.get_json()["match"]["id"]
+
+
+def test_open_tournament_join_without_key_and_idempotent_resume():
+    admin_client = app.test_client()
+    login = admin_client.post(
+        "/api/auth/login",
+        json={"email": "admin@spellbattle.local", "password": "admin123"},
+    )
+    assert login.status_code == 200, login.get_data(as_text=True)
+    tournament = admin_client.post(
+        "/api/tournaments",
+        json={
+            "name": f"Open Cup {suffix}",
+            "max_players": 8,
+            "allowed_letters": "AEIOURSTLND",
+            "requires_key": False,
+        },
+    )
+    assert tournament.status_code == 200, tournament.get_data(as_text=True)
+    tid = tournament.get_json()["id"]
+
+    one = app.test_client()
+    two = app.test_client()
+    user_one = signup(one, "openone")
+    signup(two, "opentwo")
+
+    first = one.post(f"/api/tournaments/{tid}/join", json={})
+    assert first.status_code == 200, first.get_data(as_text=True)
+    match_id = first.get_json()["match"]["id"]
+    assert first.get_json()["match"]["status"] == "waiting"
+
+    repeat = one.post(f"/api/tournaments/{tid}/join", json={})
+    assert repeat.status_code == 200, repeat.get_data(as_text=True)
+    assert repeat.get_json()["match"]["id"] == match_id
+
+    details = one.get(f"/api/tournaments/{tid}").get_json()
+    assert details["requires_key"] is False
+    assert details["viewer_participant"]["id"] == user_one["id"]
+    assert details["viewer_match"]["id"] == match_id
+
+    second = two.post(f"/api/tournaments/{tid}/join", json={})
+    assert second.status_code == 200, second.get_data(as_text=True)
+    assert second.get_json()["match"]["id"] == match_id

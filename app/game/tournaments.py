@@ -8,7 +8,7 @@ interpolated into a SQL string.
 from app import configs
 from app.game.service import letters_for, new_key, skill_pool
 from app.models import Tournament
-from app.validation import ConflictError, clean_text, parse_int
+from app.validation import ConflictError, clean_text, parse_bool, parse_int
 
 
 def validate_tournament(db, payload: dict) -> dict:
@@ -35,9 +35,11 @@ def validate_tournament(db, payload: dict) -> dict:
     )
     letters = letters_for(db, str(payload.get("allowed_letters", "all")), kind="tournament")
     skills = ",".join(skill_pool(str(payload.get("skills", ""))))
+    requires_key = parse_bool(payload.get("requires_key"), default=True, label="requires_key")
     return {
         "name": name,
         "description": description,
+        "requires_key": requires_key,
         "max_players": max_players,
         "allowed_letters": letters,
         "skills": skills,

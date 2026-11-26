@@ -56,7 +56,10 @@ async function loadTournaments() {
       <div class="panel panel-pad flex flex-col gap-3">
         <div class="flex items-start justify-between gap-3">
           <h3 class="font-display text-lg font-bold">${escapeHtml(item.name)}</h3>
-          <span class="badge badge-accent badge-sm">${escapeHtml(item.status)}</span>
+          <div class="flex flex-wrap gap-1 justify-end">
+            <span class="badge badge-accent badge-sm">${escapeHtml(item.status)}</span>
+            <span class="badge ${item.requires_key === false ? "badge-success" : "badge-outline"} badge-sm">${item.requires_key === false ? "Open" : "Key"}</span>
+          </div>
         </div>
         <p class="text-xs opacity-70">Key: <code class="font-mono">${escapeHtml(item.key)}</code></p>
         <div class="grid grid-cols-2 gap-2">
@@ -64,17 +67,25 @@ async function loadTournaments() {
           <div class="stat-tile"><span>Letters</span><strong class="font-mono text-xs">${escapeHtml(item.allowed_letters)}</strong></div>
         </div>
         <div class="mt-auto flex flex-wrap gap-2 pt-2">
-          <select class="select select-bordered select-sm" data-id="${item.id}">${settings.tournament_statuses.map((status) => `<option ${status === item.status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}</select>
-          <button class="btn btn-primary btn-sm update-status" data-id="${item.id}">Update</button>
+          <select class="select select-bordered select-sm" data-role="status" data-id="${item.id}">${settings.tournament_statuses.map((status) => `<option ${status === item.status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}</select>
+          <select class="select select-bordered select-sm" data-role="access" data-id="${item.id}">
+            <option value="true" ${item.requires_key !== false ? "selected" : ""}>Key required</option>
+            <option value="false" ${item.requires_key === false ? "selected" : ""}>Open access</option>
+          </select>
+          <button class="btn btn-primary btn-sm update-settings" data-id="${item.id}">Update</button>
         </div>
       </div>`).join("") : empty("No tournaments", "Create one to get started.");
     reveal(list.children);
-    list.querySelectorAll(".update-status").forEach((button) => {
+    list.querySelectorAll(".update-settings").forEach((button) => {
       button.addEventListener("click", async () => {
         button.disabled = true;
-        const status = list.querySelector(`select[data-id="${button.dataset.id}"]`).value;
+        const status = list.querySelector(`select[data-role="status"][data-id="${button.dataset.id}"]`).value;
+        const requiresKey = list.querySelector(`select[data-role="access"][data-id="${button.dataset.id}"]`).value === "true";
         try {
-          await request(`/admin/api/tournaments/${button.dataset.id}/status`, { method: "POST", body: JSON.stringify({ status }) });
+          await request(`/admin/api/tournaments/${button.dataset.id}/settings`, {
+            method: "POST",
+            body: JSON.stringify({ status, requires_key: requiresKey }),
+          });
           toast("Tournament updated", "success");
           loadTournaments();
         } catch (error) {
@@ -140,12 +151,14 @@ if (tournamentForm) {
           description: form.get("description"),
           max_players: Number(form.get("max_players")),
           allowed_letters: form.get("allowed_letters"),
+          requires_key: form.get("requires_key") !== "false",
           skills: form.getAll("skills").join(","),
         }),
       });
       const resultEl = document.getElementById("tournament-create-result");
       resultEl.className = "alert alert-success mt-5";
-      resultEl.innerHTML = `Created <strong>${escapeHtml(result.name)}</strong> with key <code class="font-mono">${escapeHtml(result.key)}</code> for ${result.max_players} players.`;
+      const access = result.requires_key === false ? "open access" : "key required";
+      resultEl.innerHTML = `Created <strong>${escapeHtml(result.name)}</strong> (${access}) with key <code class="font-mono">${escapeHtml(result.key)}</code> for ${result.max_players} players.`;
       reveal(resultEl);
       loadTournaments();
       toast("Tournament created", "success");

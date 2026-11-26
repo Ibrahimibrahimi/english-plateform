@@ -9,9 +9,10 @@ const NOOP = { sync() {}, attack() {}, event() {}, banner() {}, end() {}, whenId
 const SOLDIER_MIN_EXCLUSIVE = 5;
 const PROFILE = {
   "fx-skel": { w: 42, speed: 0.26, min: 1000, ground: true }, // low, walking, heavy
-  "fx-bullet": { w: 20, speed: 1.0, min: 260, ground: false }, // high, fast
-  "fx-orb": { w: 34, speed: 0.55, min: 600, ground: false },
+  "fx-bullet": { w: 20, ballisticSpeed: 1100, ground: false }, // ballistic cannon shot
+  "fx-orb": { w: 34, ballisticSpeed: 700, ground: false }, // ballistic skill orb
 };
+const GRAVITY = 1600;
 const SKELETON = `<svg class="skel" viewBox="0 0 48 40" aria-hidden="true">
   <g class="sk-leg sk-l1"><path d="M22 22 L22 30"/><g class="sk-shin"><path d="M22 30 L22 38 L27 38"/></g></g>
   <g class="sk-leg sk-l2"><path d="M22 22 L22 30"/><g class="sk-shin"><path d="M22 30 L22 38 L27 38"/></g></g>
@@ -56,13 +57,20 @@ export function createArenaFx() {
     return t.offsetLeft + t.offsetWidth / 2;
   }
 
-  function muzzleX(side) {
+  function muzzle(side) {
     const t = tank[side];
-    const muzzle = t?.querySelector(".tank-muzzle");
-    if (!muzzle) return t.offsetLeft + (side === "p1" ? t.offsetWidth : 0);
+    const m = t?.querySelector(".tank-muzzle");
+    if (!m) return { x: t.offsetLeft + (side === "p1" ? t.offsetWidth : 0), y: t.offsetTop + t.offsetHeight * 0.3 };
     const stageRect = stage.getBoundingClientRect();
-    const rect = muzzle.getBoundingClientRect();
-    return rect.left - stageRect.left + rect.width / 2;
+    const rect = m.getBoundingClientRect();
+    return { x: rect.left - stageRect.left + rect.width / 2, y: rect.top - stageRect.top + rect.height / 2 };
+  }
+
+  function muzzleX(side) { return muzzle(side).x; }
+
+  function targetCenter(side) {
+    const t = tank[side];
+    return { x: centerX(side), y: t.offsetTop + t.offsetHeight * 0.45 };
   }
 
   function float(side, text, cls) {
@@ -80,6 +88,37 @@ export function createArenaFx() {
     el.style.left = `${centerX(side)}px`;
     layer.appendChild(el);
     setTimeout(() => el.remove(), 450);
+  }
+
+  function impactFx(side, heavy = false) {
+    const { x, y } = targetCenter(side);
+    const flash = document.createElement("span");
+    flash.className = `fx-impact-flash${heavy ? " fx-impact-big" : ""}`;
+    flash.style.left = `${x}px`;
+    flash.style.top = `${y}px`;
+    layer.appendChild(flash);
+    setTimeout(() => flash.remove(), 260);
+
+    const smoke = document.createElement("span");
+    smoke.className = `fx-impact-smoke${heavy ? " fx-impact-big" : ""}`;
+    smoke.style.left = `${x}px`;
+    smoke.style.top = `${y}px`;
+    layer.appendChild(smoke);
+    setTimeout(() => smoke.remove(), 850);
+
+    const count = heavy ? 10 : 7;
+    for (let i = 0; i < count; i += 1) {
+      const bit = document.createElement("span");
+      bit.className = "fx-impact-spark";
+      bit.style.left = `${x}px`;
+      bit.style.top = `${y}px`;
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      const dist = (heavy ? 34 : 24) + Math.random() * (heavy ? 28 : 18);
+      bit.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
+      bit.style.setProperty("--dy", `${Math.sin(angle) * dist - 10}px`);
+      layer.appendChild(bit);
+      setTimeout(() => bit.remove(), 450);
+    }
   }
 
   function bones(side) {
@@ -150,15 +189,15 @@ export function createArenaFx() {
   function march(from, label, kind, onArrive) {
     const to = other(from);
     const prof = PROFILE[kind];
-    const x0 = muzzleX(from);
-    const x1 = from === "p1" ? tank.p2.offsetLeft - prof.w + 6 : tank.p1.offsetLeft + tank.p1.offsetWidth - 18;
+    const start = muzzle(from);
+    const target = targetCenter(to);
 
     const el = document.createElement("div");
     el.className = `fx-unit fx-${from} ${kind}`;
     el.innerHTML = {
       "fx-skel": `<span class="fx-word"></span><span class="fx-fig">${SKELETON}</span>`,
       "fx-bullet": '<span class="fx-fig"></span>',
-      "fx-orb": '<span class="fx-word"></span>',
+      "fx-orb": '<span class="fx-word"></span><span class="fx-orb-glow"></span>',
     }[kind];
     const word = el.querySelector(".fx-word");
     if (word) word.textContent = label;
@@ -171,11 +210,42 @@ export function createArenaFx() {
     }
     retrigger(tank[from], "is-fire", 220);
 
-    const ms = REDUCED ? 120 : Math.max(prof.min, Math.abs(x1 - x0) / prof.speed);
-    const anim = el.animate(
-      [{ transform: `translateX(${x0}px)` }, { transform: `translateX(${x1}px)` }],
-      { duration: ms, easing: "linear", fill: "forwards" },
-    );
+    let anim;
+    if (prof.ground) {
+      const x0 = start.x;
+      const x1 = from === "p1" ? tank.p2.offsetLeft - prof.w + 6 : tank.p1.offsetLeft + tank.p1.offsetWidth - 18;
+      const ms = REDUCED ? 120 : Math.max(prof.min, Math.abs(x1 - x0) / prof.speed);
+      anim = el.animate(
+        [{ transform: `translate(${x0}px, 0px)` }, { transform: `translate(${x1}px, 0px)` }],
+        { duration: ms, easing: "linear", fill: "forwards" },
+      );
+      el.style.bottom = "2.2rem";
+      el.style.left = "0";
+      el.style.top = "auto";
+    } else {
+      const dx = target.x - start.x;
+      const dy = target.y - start.y;
+      const distance = Math.hypot(dx, dy);
+      const ms = REDUCED ? 120 : Math.max(350, Math.min(900, (distance / prof.ballisticSpeed) * 1000));
+      const T = ms / 1000;
+      const vy0 = (dy - 0.5 * GRAVITY * T * T) / T;
+      const vx = dx / T;
+      const frames = [];
+      const steps = 36;
+      for (let i = 0; i <= steps; i += 1) {
+        const t = (T * i) / steps;
+        const x = start.x + vx * t;
+        const y = start.y + vy0 * t + 0.5 * GRAVITY * t * t;
+        const tan = Math.atan2(vy0 + GRAVITY * t, vx);
+        const rot = tan + (from === "p2" ? Math.PI : 0);
+        frames.push({ transform: `translate(${x}px, ${y}px) rotate(${rot}rad)`, offset: i / steps });
+      }
+      el.style.left = "0";
+      el.style.top = "0";
+      el.style.bottom = "auto";
+      anim = el.animate(frames, { duration: ms, easing: "linear", fill: "forwards" });
+    }
+
     const arrive = () => {
       el.remove();
       if (prof.ground) {
@@ -199,11 +269,11 @@ export function createArenaFx() {
     march(from, word, heavy ? "fx-skel" : "fx-bullet", () => {
       if (heavy) {
         slam[to] = true;
-        spark(to, "fx-spark-big");
+        impactFx(to, true);
         bones(to);
         retrigger(stage, "is-slam", 420);
       } else {
-        spark(to);
+        impactFx(to, false);
       }
       incoming[to] = Math.max(0, incoming[to] - 1);
       if (incoming[to] === 0) paint(to);
@@ -215,7 +285,7 @@ export function createArenaFx() {
     if (!side || !message || finished) return;
     if (name === "skill.activated") {
       march(side, "SKILL", "fx-orb", (to) => {
-        spark(to, "fx-spark-skill");
+        impactFx(to, false);
         float(to, message, "fx-skill");
       });
     } else if (name?.startsWith("health")) {
