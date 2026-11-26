@@ -1,14 +1,8 @@
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-let animate = () => {};
-let stagger = (value) => value;
-
-try {
-  ({ animate, stagger } = await import("https://cdn.jsdelivr.net/npm/motion@12/+esm"));
-} catch (error) {
-  animate = () => {};
-  stagger = (value) => value;
-}
+const Motion = globalThis.Motion || {};
+const animate = Motion.animate || (() => {});
+const stagger = Motion.stagger || (value => value);
 
 export function prefersReducedMotion() {
   return reduced.matches;

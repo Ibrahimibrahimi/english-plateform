@@ -7,11 +7,10 @@
   <meta name="theme-color" content="#f6f4ef" />
   <title>{% block title %}SpellBattle{% endblock %}</title>
   <script>try{const t=localStorage.getItem("theme");document.documentElement.dataset.theme=t==="dark"?"dark":"light"}catch(e){}</script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link href="/static/vendor/daisyui.css" rel="stylesheet" />
+  <script src="/static/vendor/tailwind.browser.js"></script>
+  <script src="/static/vendor/motion/motion.global.js"></script>
+  <link href="/static/css/fonts.css" rel="stylesheet" />
   <link href="/static/css/index.css" rel="stylesheet" />
 </head>
 <body class="bg-base-200 min-h-screen antialiased" data-page="{% block page %}{% endblock %}" data-user-id="{{ user.id if user else '' }}">
