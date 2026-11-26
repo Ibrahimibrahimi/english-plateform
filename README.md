@@ -11,7 +11,7 @@ Two players compete by building English words from a shared set of letters. Vali
 - The admin creates letter sets (6-12 unique letters) and tournaments.
 - Every round gives both players the same letters.
 - Players type English words using only those letters; letters may be reused, but a word cannot be played twice in the same round by either player.
-- Words are checked against an offline English dictionary in `app/data/words.txt`.
+- Words are checked against an offline English dictionary in `app/data/words.txt` (rebuilt with `scripts/build_words.py`).
 - Score grows with word length: 3 letters = 3 points, 4 = 6, 5 = 10, and so on.
 
 ### Tanks and resources
@@ -33,17 +33,17 @@ Keyboard shortcuts are ignored while typing in an input. Every action also has a
 
 ### Special moves
 
-A player holds one special move at a time. It is drawn randomly on the server from the moves allowed by the tournament or challenge, and activating it consumes the card.
+A player holds one special move at a time. It is drawn randomly on the server from the moves allowed by the tournament or challenge. Activating a move consumes the card, except `CLEAR_OPPONENT_SKILL` which only removes the opponent's held move and keeps the user's card.
 
 - `BLOCK_POINTS` — block the opponent's point generation for 5 seconds
 - `REDUCE_POINTS_PERCENT` — reduce opponent points by 20%
 - `STEAL_POINTS_RANGE` — take 12-30 points from the opponent
-- `SWAP_SKILLS` — switch held moves with the opponent
+- `SWAP_SKILLS` — switch held moves with the opponent; fails and keeps your card if the opponent has no held move
 - `CLEAR_OPPONENT_SKILL` — remove the opponent's held move
 
 ### Match flow
 
-5 rounds of 60 seconds are played. A knockout wins immediately. After the final round the higher score wins; a tie triggers one sudden-death round. A match starts only after both players are connected, so joining a challenge or tournament match opens a waiting lobby. Disconnects allow a 30-second reconnect grace period before forfeiture. Reconnecting replaces any older browser socket for that player without disturbing the new connection. All scoring, timers, random draws and effects are decided by the server and broadcast over WebSocket.
+By default, 10 rounds of 120 seconds are played. A knockout wins immediately. After the final round the higher score wins; a tie triggers one sudden-death round. A match starts only after both players are connected, so joining a challenge or tournament match opens a waiting lobby. Disconnects allow a 30-second reconnect grace period before forfeiture. Reconnecting replaces any older browser socket for that player without disturbing the new connection. All scoring, timers, random draws and effects are decided by the server and broadcast over WebSocket.
 
 Finished matches stay available in memory for `MATCH_RETENTION_SECONDS` (10 minutes by default) so a reconnect can load the final state. Active matches do not survive a process restart: they are marked `finished` with reason `abandoned`, while waiting matches are recreated lazily when a player connects.
 
@@ -51,7 +51,7 @@ Finished matches stay available in memory for `MATCH_RETENTION_SECONDS` (10 minu
 
 - **Backend:** Python, Flask, Flask-Sock WebSockets, SQLAlchemy with SQLite
 - **Frontend:** vanilla ES modules, Tailwind CSS and DaisyUI via CDN
-- **Dictionary:** offline word list vendored in the repository
+- **Dictionary:** offline word list vendored in the repository (`app/data/words.txt`), built from dwyl/english-words, Wordnik wordlist (MIT), and Wikipedia frequency data (MIT) via `scripts/build_words.py`
 
 ## Structure
 

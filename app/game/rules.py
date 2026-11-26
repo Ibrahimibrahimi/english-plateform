@@ -112,27 +112,32 @@ def activate_skill(actor: dict, opponent: dict, skill_pool: list[str], now: floa
     if is_blocked(actor, now):
         raise ValueError("your skills are blocked")
 
-    actor["skill"] = None
     if skill == "BLOCK_POINTS":
+        actor["skill"] = None
         opponent["blocked_until"] = now + configs.BLOCK_SECONDS
         detail = f"Point generation blocked for {configs.BLOCK_SECONDS}s"
     elif skill == "REDUCE_POINTS_PERCENT":
+        actor["skill"] = None
         reduction = round(opponent["points"] * configs.REDUCE_POINTS_PERCENT)
         opponent["points"] = max(0, opponent["points"] - reduction)
         detail = f"Reduced opponent points by {reduction}"
     elif skill == "STEAL_POINTS_RANGE":
+        actor["skill"] = None
         maximum = min(configs.STEAL_MAX_POINTS, opponent["points"])
         amount = random.randint(min(configs.STEAL_MIN_POINTS, maximum), maximum) if maximum else 0
         opponent["points"] -= amount
         actor["points"] += amount
         detail = f"Stole {amount} points"
     elif skill == "SWAP_SKILLS":
+        if opponent["skill"] is None:
+            raise ValueError("opponent has no skill to switch")
         actor["skill"], opponent["skill"] = opponent["skill"], actor["skill"]
         detail = "Skills switched"
     elif skill == "CLEAR_OPPONENT_SKILL":
         opponent["skill"] = None
         detail = "Opponent skill cleared"
     else:
+        actor["skill"] = None
         raise ValueError("unknown skill")
 
     for player in (actor, opponent):

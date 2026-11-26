@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from app import config
 from app.game.rules import (
     activate_skill,
@@ -27,7 +29,9 @@ def test_stats_from_points():
 
     sync_player(player, POOL)
     assert player["max_health"] == config.HEALTH_BASE + 20 * config.HEALTH_PER_POINT
-    assert player["attack"] == config.ATTACK_BASE + 20 * config.ATTACK_PER_POINT
+    assert player["attack"] == min(
+        config.ATTACK_CAP, config.ATTACK_BASE + 20 * config.ATTACK_PER_POINT
+    )
 
 
 def test_regeneration_caps_and_cooldown():
@@ -76,12 +80,21 @@ def test_skill_effects():
 
     actor["skill"] = "SWAP_SKILLS"
     opponent["skill"] = "CLEAR_OPPONENT_SKILL"
-    activate_skill(actor, opponent, POOL, now=now)
+    assert activate_skill(actor, opponent, POOL, now=now) == "Skills switched"
     assert actor["skill"] == "CLEAR_OPPONENT_SKILL"
+    assert opponent["skill"] == "SWAP_SKILLS"
+
+    actor["skill"] = "SWAP_SKILLS"
+    opponent["skill"] = None
+    with pytest.raises(ValueError, match="no skill"):
+        activate_skill(actor, opponent, POOL, now=now)
+    assert actor["skill"] == "SWAP_SKILLS"
     assert opponent["skill"] is None
 
+    opponent["skill"] = "BLOCK_POINTS"
     actor["skill"] = "CLEAR_OPPONENT_SKILL"
-    activate_skill(actor, opponent, POOL, now=now)
+    assert activate_skill(actor, opponent, POOL, now=now) == "Opponent skill cleared"
+    assert actor["skill"] == "CLEAR_OPPONENT_SKILL"
     assert opponent["skill"] is None
 
 

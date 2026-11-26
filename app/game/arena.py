@@ -391,6 +391,13 @@ class LiveMatch:
                 self._broadcast_locked({"type": "event", "event": "round.ended", "payload": {}})
                 self._next_round_locked()
             if self.status == "active":
+                seconds_left = max(0, math.ceil(self.round_deadline - time.monotonic())) if self.round_deadline else 0
+                self._broadcast_locked(
+                    {
+                        "type": "tick",
+                        "payload": {"seconds_left": seconds_left, "round_index": self.round_index},
+                    }
+                )
                 self._schedule_tick_locked()
 
     def broadcast_state(self) -> None:

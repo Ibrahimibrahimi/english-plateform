@@ -119,7 +119,12 @@ def training():
 
 @router.get("/playing/<int:match_id>")
 def playing(match_id: int):
-    return page("playing.html", match_id=match_id)
+    return page(
+        "playing.html",
+        match_id=match_id,
+        rounds_per_match=configs.ROUNDS_PER_MATCH,
+        round_seconds=configs.ROUND_SECONDS,
+    )
 
 
 @router.get("/profile")

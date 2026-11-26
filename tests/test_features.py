@@ -1,5 +1,6 @@
 import base64
 import io
+import json
 import time
 import uuid
 
@@ -435,6 +436,21 @@ def test_challenge_timing_settings_round_trip():
         "/api/challenges",
         json={"allowed_letters": configs.DEFAULT_LETTERS, "end_mode": "forever"},
     ).status_code == 400
+
+
+def test_timer_tick_broadcasts_seconds_left():
+    match, sockets = make_match()
+    try:
+        for socket in sockets.values():
+            socket.messages.clear()
+        match._timer_tick()
+        for socket in sockets.values():
+            ticks = [json.loads(message) for message in socket.messages if json.loads(message).get("type") == "tick"]
+            assert ticks
+            assert ticks[-1]["payload"]["seconds_left"] > 0
+            assert ticks[-1]["payload"]["round_index"] == match.round_index
+    finally:
+        match.finish("abandoned")
 
 
 def test_delayed_match_waits_before_starting():

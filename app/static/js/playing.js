@@ -400,6 +400,12 @@ if (meta) {
         return;
       }
       if (message.type === "state") return renderState(message.payload);
+      if (message.type === "tick") {
+        if (!ended && typeof message.payload?.seconds_left === "number") {
+          timer.textContent = `${message.payload.seconds_left}s`;
+        }
+        return;
+      }
       if (message.type === "round_start") {
         addLog(`Round ${message.payload.index + 1} started (${message.payload.letters})`);
         fx.banner(`Round ${message.payload.index + 1}`);
