@@ -7,7 +7,7 @@
   {% call page_head("Choose how to play", "Private duels, friend invites, and admin tournaments all start here.", "Game modes") %}
   <button data-open-howto class="btn btn-outline gap-2">{{ icon("play", "h-4 w-4") }}How to play</button>
   {% endcall %}
-  <div data-stagger class="grid gap-4 md:grid-cols-3">
+  <div data-stagger class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <a href="/play-with-friend" class="panel panel-pad flex flex-col gap-3 transition hover:border-primary/40">
       <span class="icon-tile">{{ icon("friends", "h-5 w-5") }}</span>
       <h2 class="font-display text-xl font-bold">Play with a friend</h2>
@@ -25,6 +25,12 @@
       <h2 class="font-display text-xl font-bold">Play tournament</h2>
       <p class="text-sm opacity-70">Find an admin tournament, inspect the rules, and join with a key.</p>
       <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-success">Browse events {{ icon("arrow", "h-4 w-4") }}</span>
+    </a>
+    <a href="/training" class="panel panel-pad flex flex-col gap-3 transition hover:border-primary/40">
+      <span class="icon-tile secondary">{{ icon("play", "h-5 w-5") }}</span>
+      <h2 class="font-display text-xl font-bold">Training</h2>
+      <p class="text-sm opacity-70">Fire words at a static dummy. No timer, no opponents, no pressure.</p>
+      <span class="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">Start drilling {{ icon("arrow", "h-4 w-4") }}</span>
     </a>
   </div>
 </div>

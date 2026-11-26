@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_components.html" import icon, page_head %}
+{% block title %}SpellBattle | Training{% endblock %}
+{% block page %}training{% endblock %}
+{% block content %}
+<div id="training-meta" class="page-shell flex flex-col gap-4"
+     data-letters="{{ default_letters }}"
+     data-dummy-health="{{ dummy_health }}"
+     data-attack-base="{{ attack_base }}"
+     data-attack-per-point="{{ attack_per_point }}"
+     data-attack-cap="{{ attack_cap }}">
+  {% call page_head("Training arena", "Fire valid words at a static dummy. No clock, no opponent, no pressure.", "Practice mode") %}
+  <a href="/play" class="btn btn-outline gap-2">{{ icon("arrow", "h-4 w-4") }}Back to play</a>
+  {% endcall %}
+  <section id="arena-stage" class="arena fade-in" aria-label="Training arena">
+    <div class="arena-pts arena-pts-p1"><small id="arena-name-p1"></small><b id="arena-pts-p1">0</b> points</div>
+    <div class="arena-pts arena-pts-p2"><small id="arena-name-p2"></small><b id="arena-pts-p2">0</b> points</div>
+    <div id="arena-lane" class="stage arena-lane"></div>
+    {% for side in ["p1", "p2"] %}
+    <div id="tank-{{ side }}" class="tank tank-{{ side }}">
+      <div class="abar abar-hp"><i id="arena-hp-{{ side }}"></i></div>
+      <div class="abar abar-ar"><i id="arena-ar-{{ side }}"></i></div>
+      <div class="tank-fig">
+        <img class="tank-sprite" src="{{ url_for('static', filename='img/arena/tank-' ~ side ~ '.png') }}" alt="" aria-hidden="true" width="171" height="136" decoding="async" draggable="false" />
+        <span class="tank-muzzle" aria-hidden="true"></span>
+      </div>
+    </div>
+    {% endfor %}
+    <div id="arena-units"></div>
+    <div id="arena-banner" class="arena-banner"></div>
+  </section>
+  <div class="grid gap-4 md:grid-cols-3">
+    <section class="panel panel-pad fade-in">
+      <span class="eyebrow">Your score</span>
+      <strong id="training-score" class="mt-2 block text-3xl font-extrabold text-accent">0</strong>
+      <p class="text-sm opacity-70"><span id="training-words-count">0</span> accepted words</p>
+    </section>
+    <section class="panel panel-pad fade-in">
+      <span class="eyebrow">Dummy health</span>
+      <strong id="dummy-health" class="mt-2 block text-3xl font-extrabold">300/300</strong>
+      <p class="text-sm opacity-70">Armor <span id="dummy-armor">0/0</span></p>
+    </section>
+    <section class="panel panel-pad fade-in">
+      <span class="eyebrow">Current attack</span>
+      <strong id="training-damage" class="mt-2 block text-3xl font-extrabold text-secondary">6</strong>
+      <p class="text-sm opacity-70">Grows with your score.</p>
+    </section>
+  </div>
+  <section class="panel panel-pad fade-in">
+    <div class="flex flex-col gap-5">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="form-control">
+          <span class="label-text font-semibold">Letters</span>
+          <input id="training-letters" class="input input-bordered uppercase tracking-[0.2em]" value="{{ default_letters }}" />
+          <span class="label-text-alt">Letters may be reused in each word.</span>
+        </label>
+        <div class="stat-tile">
+          <span>Goal</span>
+          <strong class="text-lg">Destroy the dummy</strong>
+        </div>
+      </div>
+      <form id="training-form" class="flex flex-col gap-2 sm:flex-row">
+        <input id="training-word" class="input input-bordered flex-1 uppercase tracking-[0.18em]" placeholder="Your word" autocomplete="off" required />
+        <button class="btn btn-primary gap-2 sm:w-32" type="submit">{{ icon("arrow", "h-4 w-4") }}Fire</button>
+      </form>
+      <div class="flex flex-wrap items-center gap-3">
+        <p id="training-feedback" class="min-h-5 flex-1 text-sm" role="status" aria-live="polite"></p>
+        <button id="training-reset" class="btn btn-outline btn-sm hidden" type="button">Reset dummy</button>
+      </div>
+      <div>
+        <h2 class="mb-2 font-display text-lg font-bold">Accepted words</h2>
+        <div id="training-accepted" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/training.js"></script>{% endblock %}

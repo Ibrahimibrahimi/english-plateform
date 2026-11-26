@@ -43,6 +43,10 @@ def challenge_create():
         default_letters=configs.DEFAULT_LETTERS,
         min_letters=configs.CHALLENGE_MIN_LETTERS,
         max_letters=configs.CHALLENGE_MAX_LETTERS,
+        delay_min=configs.CHALLENGE_DELAY_MIN_SECONDS,
+        delay_max=configs.CHALLENGE_DELAY_MAX_SECONDS,
+        end_modes=configs.CHALLENGE_END_MODES,
+        rounds_per_match=configs.ROUNDS_PER_MATCH,
     )
 
 
@@ -99,6 +103,18 @@ def leaderboard():
 @router.get("/practice")
 def practice():
     return page("practice.html")
+
+
+@router.get("/training")
+def training():
+    return page(
+        "training.html",
+        default_letters=configs.DEFAULT_LETTERS,
+        dummy_health=configs.HEALTH_CAP,
+        attack_base=configs.ATTACK_BASE,
+        attack_per_point=configs.ATTACK_PER_POINT,
+        attack_cap=configs.ATTACK_CAP,
+    )
 
 
 @router.get("/playing/<int:match_id>")
