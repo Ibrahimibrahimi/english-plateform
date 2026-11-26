@@ -1,5 +1,6 @@
 import base64
 import io
+import time
 import uuid
 
 from app import configs
@@ -9,7 +10,7 @@ from app.game.rules import new_player
 from app.game.service import new_key
 from app.game.words import is_valid_word
 from app.main import app
-from app.models import Match, MatchParticipant
+from app.models import Challenge, Match, MatchParticipant
 
 suffix = uuid.uuid4().hex[:6]
 POOL = list(configs.SKILLS)
@@ -391,3 +392,100 @@ def test_admin_dedicated_tournament_page():
     assert b"Create tournament" in page.data
     assert b"Create tournament" in client.get("/").data  # link in the side menu
     assert app.test_client().get("/admin/tournaments/new").status_code == 200
+
+
+def test_challenge_timing_settings_round_trip():
+    client = app.test_client()
+    signup(client, "timing")
+    created = client.post(
+        "/api/challenges",
+        json={
+            "allowed_letters": configs.DEFAULT_LETTERS,
+            "start_delay_seconds": 7,
+            "end_mode": configs.CHALLENGE_END_MODE_INFINITE,
+        },
+    )
+    assert created.status_code == 200
+    payload = created.get_json()
+    assert payload["start_delay_seconds"] == 7
+    assert payload["end_mode"] == configs.CHALLENGE_END_MODE_INFINITE
+    assert payload["match"]["start_delay_seconds"] == 7
+    assert payload["match"]["end_mode"] == configs.CHALLENGE_END_MODE_INFINITE
+
+    details = client.get(f"/api/challenges/{payload['key']}").get_json()
+    assert details["start_delay_seconds"] == 7
+    assert details["end_mode"] == configs.CHALLENGE_END_MODE_INFINITE
+
+    db = SessionLocal()
+    try:
+        challenge = db.get(Challenge, payload["id"])
+        match = db.get(Match, payload["match"]["id"])
+        assert challenge.start_delay_seconds == 7
+        assert challenge.end_mode == configs.CHALLENGE_END_MODE_INFINITE
+        assert match.start_delay_seconds == 7
+        assert match.end_mode == configs.CHALLENGE_END_MODE_INFINITE
+    finally:
+        db.close()
+
+    assert client.post(
+        "/api/challenges",
+        json={"allowed_letters": configs.DEFAULT_LETTERS, "start_delay_seconds": 999},
+    ).status_code == 400
+    assert client.post(
+        "/api/challenges",
+        json={"allowed_letters": configs.DEFAULT_LETTERS, "end_mode": "forever"},
+    ).status_code == 400
+
+
+def test_delayed_match_waits_before_starting():
+    players = {
+        1: new_player(1, "one", POOL),
+        2: new_player(2, "two", POOL),
+    }
+    rounds = [{"index": 0, "letters": configs.DEFAULT_LETTERS, "duration_seconds": 60}]
+    match = LiveMatch(9001, players, rounds, POOL, start_delay_seconds=0.05)
+    sockets = {1: FakeSocket(), 2: FakeSocket()}
+    try:
+        assert match.connect(1, sockets[1])
+        assert match.connect(2, sockets[2])
+        assert match.status == "waiting"
+        assert match.public_state()["start_in"] >= 1
+        deadline = time.monotonic() + 1
+        while match.status == "waiting" and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert match.status == "active"
+    finally:
+        match.finish("abandoned")
+
+
+def test_infinite_match_continues_after_last_round():
+    players = {
+        1: new_player(1, "one", POOL),
+        2: new_player(2, "two", POOL),
+    }
+    rounds = [
+        {"index": index, "letters": configs.DEFAULT_LETTERS, "duration_seconds": 60}
+        for index in range(2)
+    ]
+    match = LiveMatch(9002, players, rounds, POOL, infinite=True)
+    sockets = {1: FakeSocket(), 2: FakeSocket()}
+    try:
+        assert match.connect(1, sockets[1])
+        assert match.connect(2, sockets[2])
+        assert match.public_state()["total_rounds"] is None
+        match.next_round()
+        match.next_round()
+        assert match.status == "active"
+        assert match.round_index == 2
+        assert len(match.rounds) == 3
+        match.finish("ko", winner_id=1)
+        assert match.status == "finished"
+    finally:
+        match.finish("abandoned")
+
+
+def test_training_page_renders():
+    response = app.test_client().get("/training")
+    assert response.status_code == 200
+    assert b"Training arena" in response.data
+    assert b"/static/js/training.js" in response.data

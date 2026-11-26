@@ -160,6 +160,8 @@ def register_match(db, match: Match):
         on_event=record_event,
         on_start=mark_started,
         on_round=mark_round,
+        infinite=match.end_mode == configs.CHALLENGE_END_MODE_INFINITE,
+        start_delay_seconds=match.start_delay_seconds,
     )
     for user_id, state in players.items():
         live.add_player(user_id, state)

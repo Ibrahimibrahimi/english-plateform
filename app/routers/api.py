@@ -163,8 +163,23 @@ def _match_info(match: Match) -> dict:
         "status": match.status,
         "tournament_id": match.tournament_id,
         "challenge_id": match.challenge_id,
+        "start_delay_seconds": match.start_delay_seconds,
+        "end_mode": match.end_mode,
         "url": f"/playing/{match.id}",
     }
+
+
+def _challenge_timing(payload: dict) -> tuple[int, str]:
+    try:
+        delay = int(payload.get("start_delay_seconds", configs.CHALLENGE_DELAY_DEFAULT_SECONDS))
+    except (TypeError, ValueError):
+        abort(400, description="Invalid start delay")
+    if not configs.CHALLENGE_DELAY_MIN_SECONDS <= delay <= configs.CHALLENGE_DELAY_MAX_SECONDS:
+        abort(400, description="Invalid start delay")
+    end_mode = str(payload.get("end_mode", configs.CHALLENGE_END_MODE_ROUNDS))
+    if end_mode not in configs.CHALLENGE_END_MODES:
+        abort(400, description="Invalid match length")
+    return delay, end_mode
 
 
 def _create_match(db, user_ids: list[int], letters: str, skills: str, mode: str, **extra) -> Match:
@@ -197,6 +212,9 @@ def public_config():
         "default_letters": configs.DEFAULT_LETTERS,
         "challenge_min_letters": configs.CHALLENGE_MIN_LETTERS,
         "challenge_max_letters": configs.CHALLENGE_MAX_LETTERS,
+        "challenge_delay_min": configs.CHALLENGE_DELAY_MIN_SECONDS,
+        "challenge_delay_max": configs.CHALLENGE_DELAY_MAX_SECONDS,
+        "challenge_end_modes": configs.CHALLENGE_END_MODES,
         "tournament_min_letters": configs.TOURNAMENT_MIN_LETTERS,
         "tournament_max_letters": configs.TOURNAMENT_MAX_LETTERS,
         "min_players": configs.MIN_TOURNAMENT_PLAYERS,
@@ -444,6 +462,7 @@ def create_challenge():
     touch(user.id)
     payload = body()
     letters = letters_for(db, str(payload.get("allowed_letters", "all")))
+    delay, end_mode = _challenge_timing(payload)
     opponent_id = None
     raw_opponent = payload.get("opponent_id")
     if raw_opponent is not None:
@@ -462,6 +481,8 @@ def create_challenge():
         opponent_id=opponent_id,
         allowed_letters=letters,
         skills=",".join(skill_pool(str(payload.get("skills", "")))),
+        start_delay_seconds=delay,
+        end_mode=end_mode,
     )
     db.add(challenge)
     db.flush()
@@ -472,6 +493,8 @@ def create_challenge():
         challenge.skills,
         "challenge",
         challenge_id=challenge.id,
+        start_delay_seconds=delay,
+        end_mode=end_mode,
     )
     challenge.match_id = match.id
     db.commit()
@@ -491,6 +514,8 @@ def create_challenge():
         "id": challenge.id,
         "key": challenge.key,
         "status": challenge.status,
+        "start_delay_seconds": challenge.start_delay_seconds,
+        "end_mode": challenge.end_mode,
         "url": f"/challenge/join?key={challenge.key}",
         "match": _match_info(match),
     })
@@ -522,6 +547,8 @@ def list_challenges():
             "status": challenge.status,
             "allowed_letters": challenge.allowed_letters,
             "skills": challenge.skills,
+            "start_delay_seconds": challenge.start_delay_seconds,
+            "end_mode": challenge.end_mode,
             "for_you": challenge.opponent_id == user.id,
             "expires_at": challenge.expires_at.isoformat() if challenge.expires_at else None,
             "created_at": challenge.created_at.isoformat() if challenge.created_at else None,
@@ -548,6 +575,8 @@ def get_challenge(key: str):
         "status": challenge.status,
         "allowed_letters": challenge.allowed_letters,
         "skills": challenge.skills,
+        "start_delay_seconds": challenge.start_delay_seconds,
+        "end_mode": challenge.end_mode,
         "expires_at": challenge.expires_at.isoformat() if challenge.expires_at else None,
         "creator_id": challenge.creator_id,
         "opponent_id": challenge.opponent_id,
@@ -728,11 +757,13 @@ def _join_tournament(db, tournament: Tournament, user: User) -> dict:
             match = _create_match(
                 db,
                 [opponent.user_id, user.id],
-                tournament.allowed_letters,
-                tournament.skills,
-                "tournament",
-                tournament_id=tournament.id,
-            )
+        tournament.allowed_letters,
+        tournament.skills,
+        "tournament",
+        tournament_id=tournament.id,
+        start_delay_seconds=0,
+        end_mode=configs.CHALLENGE_END_MODE_ROUNDS,
+    )
             db.commit()
             register_match(db, match)
             result["match"] = _match_info(match)
@@ -906,6 +937,8 @@ def accept_rematch(match_id: int):
         match.allowed_letters,
         match.skills,
         configs.CHALLENGE_MODE,
+        start_delay_seconds=match.start_delay_seconds,
+        end_mode=match.end_mode,
     )
     offer.status = configs.REMATCH_STATUS_ACCEPTED
     offer.new_match_id = new_match.id

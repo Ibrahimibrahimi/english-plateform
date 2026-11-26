@@ -17,6 +17,20 @@ def _seed():
     # Keep databases created by older versions working after new settings were added.
     ensure_column("users", "avatar", "VARCHAR(20)", f"'{configs.DEFAULT_AVATAR}'")
     ensure_column("users", "avatar_image", "VARCHAR(120)", "NULL")
+    ensure_column("challenges", "start_delay_seconds", "INTEGER", str(configs.CHALLENGE_DELAY_DEFAULT_SECONDS))
+    ensure_column(
+        "challenges",
+        "end_mode",
+        "VARCHAR(20)",
+        f"'{configs.CHALLENGE_END_MODE_ROUNDS}'",
+    )
+    ensure_column("matches", "start_delay_seconds", "INTEGER", str(configs.CHALLENGE_DELAY_DEFAULT_SECONDS))
+    ensure_column(
+        "matches",
+        "end_mode",
+        "VARCHAR(20)",
+        f"'{configs.CHALLENGE_END_MODE_ROUNDS}'",
+    )
     db = SessionLocal()
     try:
         admin_user = db.query(User).filter(User.role == "admin").first()

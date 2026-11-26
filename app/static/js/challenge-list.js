@@ -12,6 +12,12 @@ const skillText = (raw) => {
   }).join(", ");
 };
 
+const timingText = (challenge) => {
+  const delay = Number(challenge.start_delay_seconds || 0);
+  const start = delay ? `${delay}s delay` : "Instant";
+  return challenge.end_mode === "infinite" ? `${start} · Until KO` : `${start} · ${settings.rounds_per_match} rounds`;
+};
+
 const empty = "<div class='empty-state'><strong>No open challenges</strong><span class='text-sm'>Create one and share the link with a friend.</span></div>";
 const container = document.getElementById("challenge-list");
 if (container) {
@@ -29,6 +35,7 @@ if (container) {
         <div class="grid grid-cols-2 gap-2 text-xs">
           <div class="stat-tile"><span>Skills</span><strong class="text-xs">${escapeHtml(skillText(challenge.skills))}</strong></div>
           <div class="stat-tile"><span>Record</span><strong class="text-xs">${challenge.creator.wins} wins</strong></div>
+          <div class="stat-tile col-span-2"><span>Timing</span><strong class="text-xs">${escapeHtml(timingText(challenge))}</strong></div>
         </div>
         <div class="mt-auto flex flex-wrap gap-2 pt-2">
           <button class="btn btn-primary btn-sm join-challenge gap-2" data-key="${escapeHtml(challenge.key)}">Join challenge</button>

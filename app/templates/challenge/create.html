@@ -15,6 +15,21 @@
         <span class="label-text-alt">{{ min_letters }}-{{ max_letters }} unique letters; letters may be reused inside a word.</span>
       </label>
       <fieldset class="flex flex-wrap gap-2" id="skill-options"></fieldset>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="form-control w-full">
+          <span class="label-text font-semibold">Start delay</span>
+          <input name="start_delay_seconds" type="number" class="input input-bordered" min="{{ delay_min }}" max="{{ delay_max }}" step="1" value="0" required />
+          <span class="label-text-alt">Seconds before the first round; 0 starts immediately once both players connect.</span>
+        </label>
+        <label class="form-control w-full">
+          <span class="label-text font-semibold">Match length</span>
+          <select name="end_mode" class="select select-bordered">
+            <option value="rounds">{{ rounds_per_match }} rounds</option>
+            <option value="infinite">Until KO (infinite)</option>
+          </select>
+          <span class="label-text-alt">Until KO keeps 60-second rounds going until a player is destroyed.</span>
+        </label>
+      </div>
       <button class="btn btn-primary gap-2 self-start" type="submit">{{ icon("plus", "h-4 w-4") }}Create challenge</button>
     </form>
     <div id="challenge-result" class="alert alert-success hidden mt-5"></div>

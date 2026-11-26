@@ -31,6 +31,8 @@ class LiveMatch:
         on_event=None,
         on_start=None,
         on_round=None,
+        infinite: bool = False,
+        start_delay_seconds: int = 0,
     ):
         self.match_id = match_id
         self.players = players
@@ -49,8 +51,12 @@ class LiveMatch:
         # cannot be replayed by the opponent (or by the same player).
         self.used_words: set[str] = set()
         self.sudden_death = False
+        self.infinite = infinite
+        self.start_delay_seconds = max(0, start_delay_seconds)
+        self.start_deadline = 0.0
         self.winner_id: int | None = None
         self._timer: threading.Timer | None = None
+        self._start_timer: threading.Timer | None = None
         self._lock = threading.RLock()
         self._send_lock = threading.Lock()
         for player in self.players.values():
@@ -80,8 +86,9 @@ class LiveMatch:
             "match_id": self.match_id,
             "status": self.status,
             "round_index": self.round_index,
-            "total_rounds": len(self.rounds),
+            "total_rounds": None if self.infinite else len(self.rounds),
             "seconds_left": max(0, math.ceil(self.round_deadline - now)) if self.round_deadline else 0,
+            "start_in": max(0, math.ceil(self.start_deadline - now)) if self.start_deadline else 0,
             "letters": self.rounds[self.round_index]["letters"] if self.round_index >= 0 else "",
             "winner_id": self.winner_id,
             "players": players,
@@ -122,6 +129,35 @@ class LiveMatch:
             and all(uid in self.connections for uid in self.players)
         )
 
+    def _cancel_start_locked(self) -> None:
+        if self._start_timer is not None:
+            self._start_timer.cancel()
+            self._start_timer = None
+        self.start_deadline = 0.0
+
+    def _schedule_start_locked(self) -> None:
+        if not self._can_start_locked():
+            return
+        if self.start_delay_seconds <= 0:
+            self._start_locked()
+            return
+        if self._start_timer is not None:
+            return
+        self.start_deadline = time.monotonic() + self.start_delay_seconds
+        timer = threading.Timer(self.start_delay_seconds, self._start_after_delay)
+        timer.daemon = True
+        self._start_timer = timer
+        timer.start()
+        self._broadcast_locked({"type": "state", "payload": self._public_state_locked()})
+
+    def _start_after_delay(self) -> None:
+        with self._lock:
+            if not self._can_start_locked():
+                self._cancel_start_locked()
+                self._broadcast_locked({"type": "state", "payload": self._public_state_locked()})
+                return
+            self._start_locked()
+
     def connect(self, user_id: int, websocket) -> bool:
         with self._lock:
             if user_id not in self.players:
@@ -141,7 +177,7 @@ class LiveMatch:
             self.connections[user_id] = websocket
             self._send(websocket, {"type": "state", "payload": self._public_state_locked()})
             if self._can_start_locked():
-                self._start_locked()
+                self._schedule_start_locked()
             else:
                 self._broadcast_locked({"type": "state", "payload": self._public_state_locked()})
             return True
@@ -160,6 +196,10 @@ class LiveMatch:
         player = self.players.get(user_id)
         if player is not None:
             player["connected"] = False
+        if self.status == "waiting":
+            self._cancel_start_locked()
+            self._broadcast_locked({"type": "state", "payload": self._public_state_locked()})
+            return True
         if self.status != "active":
             return True
         timer = self.disconnect_timers.pop(user_id, None)
@@ -225,13 +265,14 @@ class LiveMatch:
 
     def start(self) -> None:
         with self._lock:
-            self._start_locked()
+            self._schedule_start_locked()
 
     def _start_locked(self) -> None:
         if self.status != "waiting" or len(self.players) != 2:
             return
         if not all(uid in self.connections for uid in self.players):
             return
+        self._cancel_start_locked()
         self.status = "active"
         self._notify(self.on_start, self.match_id)
         self.emit_event("match.started", 0, {})
@@ -244,9 +285,13 @@ class LiveMatch:
 
     def _next_round_locked(self) -> None:
         self.round_index += 1
-        if self.round_index >= len(self.rounds):
+        if not self.infinite and self.round_index >= len(self.rounds):
             self._finish_locked("rounds")
             return
+        if self.round_index >= len(self.rounds):
+            extra = dict(self.rounds[-1])
+            extra["index"] = self.round_index
+            self.rounds.append(extra)
         current = self.rounds[self.round_index]
         self.round_deadline = time.monotonic() + current["duration_seconds"]
         self._notify(self.on_round, self.match_id, self.round_index)
@@ -255,7 +300,7 @@ class LiveMatch:
                 "type": "round_start",
                 "payload": {
                     "index": self.round_index,
-                    "total": len(self.rounds),
+                    "total": None if self.infinite else len(self.rounds),
                     "letters": current["letters"],
                     "duration": current["duration_seconds"],
                 },
@@ -396,7 +441,7 @@ class LiveMatch:
     def _finish_locked(self, reason: str, winner_id: int | None = None) -> None:
         if self.status == "finished":
             return
-        if winner_id is None and reason == "rounds":
+        if winner_id is None and reason == "rounds" and not self.infinite:
             ordered = sorted(self.players.items(), key=lambda item: item[1]["points"], reverse=True)
             if len(ordered) == 2 and ordered[0][1]["points"] == ordered[1][1]["points"] and not self.sudden_death:
                 self.sudden_death = True
@@ -411,6 +456,7 @@ class LiveMatch:
 
         self.status = "finished"
         self.winner_id = winner_id
+        self._cancel_start_locked()
         if self._timer is not None:
             self._timer.cancel()
         for timer in self.disconnect_timers.values():
@@ -445,6 +491,8 @@ class Arena:
         on_event=None,
         on_start=None,
         on_round=None,
+        infinite: bool = False,
+        start_delay_seconds: int = 0,
     ) -> LiveMatch:
         def finish_and_cleanup(match_id, reason, winner_id, players_state, round_index):
             try:
@@ -468,6 +516,8 @@ class Arena:
                 on_event=on_event,
                 on_start=on_start,
                 on_round=on_round,
+                infinite=infinite,
+                start_delay_seconds=start_delay_seconds,
             )
             self.matches[match_id] = match
             return match

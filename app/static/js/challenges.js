@@ -12,6 +12,13 @@ const skillText = (raw) => {
   }).join(", ");
 };
 
+const timingText = (challenge) => {
+  const delay = Number(challenge.start_delay_seconds || 0);
+  const start = delay ? `${delay}s delay` : "Instant start";
+  const length = challenge.end_mode === "infinite" ? "Until KO" : `${settings.rounds_per_match} rounds`;
+  return `${start} · ${length}`;
+};
+
 const skillOptions = document.getElementById("skill-options");
 if (skillOptions) {
   skillOptions.innerHTML = settings.skills.map(({ code, label, icon }) => `
@@ -31,7 +38,12 @@ if (createForm) {
     try {
       const challenge = await request("/api/challenges", {
         method: "POST",
-        body: JSON.stringify({ allowed_letters: form.get("letters"), skills: form.getAll("skills").join(",") }),
+        body: JSON.stringify({
+          allowed_letters: form.get("letters"),
+          skills: form.getAll("skills").join(","),
+          start_delay_seconds: Number(form.get("start_delay_seconds") || 0),
+          end_mode: form.get("end_mode") || "rounds",
+        }),
       });
       const result = document.getElementById("challenge-result");
       result.classList.remove("hidden");
@@ -40,6 +52,7 @@ if (createForm) {
           <div>
             <strong class="font-display text-lg">Challenge ready</strong>
             <p class="text-sm opacity-70">Key: <code class="font-mono">${escapeHtml(challenge.key)}</code></p>
+            <p class="text-sm opacity-70">${escapeHtml(timingText(challenge))}</p>
             <a class="link link-primary text-sm" href="${escapeHtml(challenge.url)}">${escapeHtml(location.origin + challenge.url)}</a>
           </div>
           <a class="btn btn-primary btn-sm gap-2" href="/playing/${challenge.match.id}">Open lobby</a>
@@ -98,6 +111,8 @@ if (searchForm) {
           <div class="grid gap-3 sm:grid-cols-2">
             <div><span class="text-xs uppercase tracking-wider opacity-60">Letters</span><strong class="mt-1 block font-mono">${escapeHtml(challenge.allowed_letters)}</strong></div>
             <div><span class="text-xs uppercase tracking-wider opacity-60">Skills</span><strong class="mt-1 block text-sm">${escapeHtml(skillText(challenge.skills))}</strong></div>
+            <div><span class="text-xs uppercase tracking-wider opacity-60">Start</span><strong class="mt-1 block text-sm">${escapeHtml(Number(challenge.start_delay_seconds) ? `${challenge.start_delay_seconds}s delay` : "Instant")}</strong></div>
+            <div><span class="text-xs uppercase tracking-wider opacity-60">Length</span><strong class="mt-1 block text-sm">${escapeHtml(challenge.end_mode === "infinite" ? "Until KO" : `${settings.rounds_per_match} rounds`)}</strong></div>
           </div>
           <a class="btn btn-primary btn-sm mt-5 gap-2" href="/challenge/join?key=${encodeURIComponent(challenge.key)}">Join challenge</a>
         </div>`;

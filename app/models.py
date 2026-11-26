@@ -89,6 +89,10 @@ class Challenge(Base):
     opponent_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     allowed_letters: Mapped[str] = mapped_column(String(30), default="all")
     skills: Mapped[str] = mapped_column(String(300), default="")
+    start_delay_seconds: Mapped[int] = mapped_column(
+        Integer, default=configs.CHALLENGE_DELAY_DEFAULT_SECONDS
+    )
+    end_mode: Mapped[str] = mapped_column(String(20), default=configs.CHALLENGE_END_MODE_ROUNDS)
     status: Mapped[str] = mapped_column(String(20), default="created")
     expires_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: utcnow() + timedelta(hours=configs.CHALLENGE_TTL_HOURS)
@@ -108,6 +112,10 @@ class Match(Base):
     challenge_id: Mapped[int | None] = mapped_column(ForeignKey("challenges.id"), nullable=True)
     allowed_letters: Mapped[str] = mapped_column(String(30), default="all")
     skills: Mapped[str] = mapped_column(String(300), default="")
+    start_delay_seconds: Mapped[int] = mapped_column(
+        Integer, default=configs.CHALLENGE_DELAY_DEFAULT_SECONDS
+    )
+    end_mode: Mapped[str] = mapped_column(String(20), default=configs.CHALLENGE_END_MODE_ROUNDS)
     round_index: Mapped[int] = mapped_column(Integer, default=0)
     winner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     end_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
