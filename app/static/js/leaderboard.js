@@ -26,7 +26,7 @@ try {
           return `
             <a href="${escapeHtml(row.profile_url)}" class="panel panel-pad flex flex-col items-center gap-2 text-center ring-2 transition hover:-translate-y-1 ${medal.ring} ${first ? "podium-first" : ""}">
               <span class="badge ${medal.badge} badge-lg font-display">${medal.label}</span>
-              ${avatarFor(row, first ? "w-20 text-4xl" : "w-16 text-3xl")}
+              ${avatarFor(row, first ? "w-28 text-5xl" : "w-24 text-4xl")}
               <h3 class="font-display text-lg font-bold">${escapeHtml(row.username)}</h3>
               <p class="text-3xl font-extrabold" style="color:${medal.color}">${row.points}</p>
               <p class="text-xs uppercase tracking-wider opacity-60">Learning points</p>
@@ -43,7 +43,7 @@ try {
       ? rows.map((row) => `
           <tr class="${row.medal ? "bg-accent/10" : ""}">
             <th>${row.rank}</th>
-            <td><div class="flex items-center gap-3">${avatarFor(row)}<span class="font-semibold">${escapeHtml(row.username)}</span></div></td>
+            <td><div class="flex items-center gap-3">${avatarFor(row, "w-14 text-2xl")}<span class="font-semibold">${escapeHtml(row.username)}</span></div></td>
             <td class="font-extrabold text-accent">${row.points}</td>
             <td>${row.wins} W / ${row.losses} L</td>
             <td>${row.tournaments_played}</td>

@@ -40,6 +40,7 @@ if (meta) {
   let ended = false;
   let retry = 0;
   let reconnectTimer = null;
+  let startCountdownTimer = null;
   let isChallenge = false;
   let tournamentId = null;
   let finishedAtLoad = false;
@@ -87,6 +88,30 @@ if (meta) {
   };
 
   const hideConnection = () => connectionBanner?.classList.add("hidden");
+
+  const stopStartCountdown = () => {
+    if (startCountdownTimer !== null) {
+      clearInterval(startCountdownTimer);
+      startCountdownTimer = null;
+    }
+  };
+
+  const showStartCountdown = (seconds) => {
+    stopStartCountdown();
+    let remaining = Math.max(1, Number(seconds) || 0);
+    setConnectionBadge("Starting soon", "badge-accent");
+    roundLabel.textContent = "Get ready";
+    timer.textContent = `${remaining}s`;
+    startCountdownTimer = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        stopStartCountdown();
+        timer.textContent = "0s";
+        return;
+      }
+      timer.textContent = `${remaining}s`;
+    }, 1000);
+  };
 
   const renderResult = (payload) => {
     if (!result) return;
@@ -249,14 +274,20 @@ if (meta) {
     if (mine) { sideById[mine.id] = "p1"; renderPlayer(mine, "p1", mine.id === myId); }
     if (opponent) { sideById[opponent.id] = "p2"; renderPlayer(opponent, "p2", false); }
 
-    const round = Math.min(payload.round_index + 1, payload.total_rounds);
+    const round = payload.round_index + 1;
     if (payload.status === "waiting") {
+      setControlsEnabled(false);
+      if (payload.start_in > 0) {
+        showStartCountdown(payload.start_in);
+        return;
+      }
+      stopStartCountdown();
       setConnectionBadge("Waiting for opponent", "badge-accent");
       roundLabel.textContent = "Lobby";
       timer.textContent = "--";
-      setControlsEnabled(false);
       return;
     }
+    stopStartCountdown();
     if (payload.status === "finished") {
       setControlsEnabled(false);
       fx.end(payload.winner_id == null ? null : sideById[payload.winner_id]);
@@ -270,7 +301,9 @@ if (meta) {
     setControlsEnabled(true);
     setConnectionBadge("Connected", "badge-success");
     hideConnection();
-    roundLabel.textContent = `Round ${round} / ${payload.total_rounds}`;
+    roundLabel.textContent = payload.total_rounds
+      ? `Round ${round} / ${payload.total_rounds}`
+      : `Round ${round} / ∞`;
     timer.textContent = `${payload.seconds_left}s`;
     renderLetters(payload.letters);
   };
@@ -287,6 +320,7 @@ if (meta) {
 
     socket.addEventListener("close", (event) => {
       if (ended) return;
+      stopStartCountdown();
       setControlsEnabled(false);
       if (event.code === 4401) {
         setConnectionBadge("Login required", "badge-accent");
@@ -389,12 +423,22 @@ if (meta) {
   document.getElementById("armor-btn").addEventListener("click", () => send("resource.regenerate", { resource: "armor" }));
   document.getElementById("regen-skill-btn").addEventListener("click", () => send("skill.regenerate"));
 
+  const shortcutActions = {
+    "1": () => send("skill.activate"),
+    "2": () => send("resource.regenerate", { resource: "health" }),
+    "3": () => send("resource.regenerate", { resource: "armor" }),
+    "4": () => send("skill.regenerate"),
+  };
+  const legacyShortcuts = { "0": "1", "1": "2", "2": "3", "3": "4" };
+
   document.addEventListener("keydown", (event) => {
-    if (event.target.matches("input, textarea")) return;
-    if (event.ctrlKey && event.key === "0") { event.preventDefault(); send("skill.activate"); }
-    if (event.ctrlKey && event.key === "1") { event.preventDefault(); send("resource.regenerate", { resource: "health" }); }
-    if (event.ctrlKey && event.key === "2") { event.preventDefault(); send("resource.regenerate", { resource: "armor" }); }
-    if (event.ctrlKey && event.key === "3") { event.preventDefault(); send("skill.regenerate"); }
+    if (ended || event.repeat || event.isComposing) return;
+    if (event.altKey || event.metaKey || event.shiftKey) return;
+    const key = event.ctrlKey ? legacyShortcuts[event.key] : event.key;
+    const action = shortcutActions[key];
+    if (!action) return;
+    event.preventDefault();
+    action();
   });
 
   setControlsEnabled(false);
